@@ -6,13 +6,11 @@ const fs      = require('fs');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit:'20mb' }));
-app.use(express.urlencoded({ extended:true }));
+app.use(express.json({ limit:'500mb' }));
+app.use(express.urlencoded({ extended:true, limit:'500mb' }));
 
-// static SPA
 app.use(express.static(path.join(__dirname,'../apps/web')));
 
-// ── API ──────────────────────────────────────────────────────────────
 app.use('/api/recognize', require('./routes/recognize'));
 app.use('/api/search',    require('./routes/search'));
 app.use('/api/compose',   require('./routes/compose'));
@@ -22,14 +20,13 @@ app.use('/api/recognize/scale', require('./routes/scale'));
 app.use('/api/transcribe',      require('./routes/transcribe'));
 
 app.get('/api/health', (_req,res)=>{
-  res.json({ status:'ok', app:'GoMaa Raga Vidya v1', version:'1.0.0',
+  res.json({ status:'ok', app:'GoMaa Raga Vidya v3', version:'3.0.0',
              timestamp:new Date().toISOString() });
 });
 app.get('/api/ragas', (_req,res)=>{
   res.json(require('../models/knowledge_base.json'));
 });
 
-// download sheet XML
 app.get('/api/sheet/:compositionId', async(req,res)=>{
   const db = require('../core/db/sqlite');
   await db.getDb();
@@ -40,7 +37,6 @@ app.get('/api/sheet/:compositionId', async(req,res)=>{
   res.send(row.sheetMusicXml);
 });
 
-// download MIDI
 app.get('/api/midi/:compositionId', async(req,res)=>{
   const db = require('../core/db/sqlite');
   await db.getDb();
@@ -51,13 +47,36 @@ app.get('/api/midi/:compositionId', async(req,res)=>{
   res.send(Buffer.from(row.midiB64,'base64'));
 });
 
-// SPA fallback
+app.get('/api/analysis/:id', async (req, res) => {
+  try {
+    const db = require('../core/db/sqlite');
+    await db.getDb();
+    const row = db.get('SELECT * FROM music WHERE id=?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    const result = JSON.parse(row.analysisJson || '{}');
+    res.json({ ...result, id: row.id, savedAt: row.createdAt });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/analyses', async (_req, res) => {
+  try {
+    const db = require('../core/db/sqlite');
+    await db.getDb();
+    const rows = db.all('SELECT id, title, raga, ragaNumber, createdAt FROM music ORDER BY createdAt DESC LIMIT 100');
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('*',(_req,res)=>{
   res.sendFile(path.join(__dirname,'../apps/web/index.html'));
 });
 
 const PORT = process.env.PORT||3000;
 app.listen(PORT,()=>{
-  console.log(`\n🎼  GoMaa Raga Vidya  →  http://localhost:${PORT}\n`);
+  console.log(`\n🎼  GoMaa Raga Vidya v3  →  http://localhost:${PORT}\n`);
 });
 module.exports=app;
