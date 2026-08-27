@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS music (
   sheetMusic TEXT,
   midiData TEXT,
   language TEXT,
+  analysisJson TEXT,
   createdAt INTEGER DEFAULT (strftime('%s','now'))
 );
 CREATE TABLE IF NOT EXISTS fingerprint (

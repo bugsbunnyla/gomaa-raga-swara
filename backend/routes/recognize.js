@@ -555,8 +555,8 @@ async function analyseFile(filePath, originalName, fileSize, sourceUrl, opts = {
 
   let fp = { hash: '', peaks: [] };
   let embed = { vector: [] };
-  try { fp = generateFingerprint(filePath) || fp; } catch(_) {}
-  try { embed = embedAudio(filePath, fileSize, null) || embed; } catch(_) {}
+  try { fp = generateFingerprint(filePath) || fp; } catch(e) { console.warn('[GoMaa] fingerprint error:', e.message); }
+  try { embed = embedAudio(filePath, fileSize, null) || embed; } catch(e) { console.warn('[GoMaa] embed error:', e.message); }
 
   let fpMatches = [];
   try {

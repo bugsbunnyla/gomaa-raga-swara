@@ -19,7 +19,7 @@ async function getDb() {
   // apply schema statement by statement - no multi-statement transactions
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
   schema.split(';').map(s=>s.trim()).filter(Boolean).forEach(s => {
-    try { db.run(s+';'); } catch(_) {}
+    try { db.run(s+';'); } catch(e) { if (!e.message.includes('already exists')) console.warn('Schema:', e.message); }
   });
   _save();
   return db;
