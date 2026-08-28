@@ -33,6 +33,8 @@ const { embedAudio }   = require('../../core/ai/audioEmbedding');
 const { fuse }         = require('../../core/ai/fusionEngine');
 const { generateSheetMusicXml, generateMidi, RAGA_DEMO_LYRICS, SWARA_DISPLAY }
                        = require('../../core/ai/sheetMusicEngine');
+const { processAudio, assignTranscriptionToSegments, buildSectionLyrics } = require('../../core/ai/carnaticSegmenter');
+const { detectRagaFromChroma } = require('../../core/ai/ragaModel');
 
 const UPLOAD_DIR = path.join(__dirname, '../../uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -371,13 +373,14 @@ print('OK')`;
   });
 }
 
-function buildSahityamGrid(swaraFrames, pitchFrames, talaObj, tempo, ragaName, sampleRate) {
+function buildSahityamGrid(swaraFrames, pitchFrames, talaObj, tempo, ragaName, sampleRate, carnaticSegments = []) {
   const HOP = 512;
   const beatsPerSec = tempo / 60;
   const framesPerBeat = Math.round(sampleRate / HOP / beatsPerSec);
   const tala = (typeof talaObj === 'string') ? { beats: 8, sections: [4, 2, 2], clapOn: [true, false, false] } : (talaObj || { beats: 8, sections: [4, 2, 2], clapOn: [true, false, false] });
   const talaBeats = tala.beats || 8;
   const sections = tala.sections || [4, 2, 2];
+
   const beatSwaras = [];
   let curBeat = [], beatCount = 0;
   for (let fi = 0; fi < swaraFrames.length; fi++) {
@@ -390,6 +393,7 @@ function buildSahityamGrid(swaraFrames, pitchFrames, talaObj, tempo, ragaName, s
       beatCount++; curBeat = [];
     }
   }
+
   function buildNotation(swaras) {
     const tokens = [];
     let posInCycle = 0, posInSection = 0, sectionIdx = 0;
@@ -405,53 +409,95 @@ function buildSahityamGrid(swaraFrames, pitchFrames, talaObj, tempo, ragaName, s
     }
     return tokens.join(' ');
   }
-  function splitSections(beatSwaras) {
-    const totalBeats = beatSwaras.length;
-    const cycleLen = talaBeats;
-    const cycles = Math.floor(totalBeats / cycleLen) || 1;
-    const pallaviEnd = Math.floor(cycles * 0.4) * cycleLen;
-    const anupallaviEnd = Math.floor(cycles * 0.7) * cycleLen;
-    return { pallavi: beatSwaras.slice(0, pallaviEnd), anupallavi: beatSwaras.slice(pallaviEnd, anupallaviEnd), charanam: beatSwaras.slice(anupallaviEnd) };
+
+  function splitByDetectedSections(beatSwaras, segments) {
+    if (!segments || !segments.length) {
+      const totalBeats = beatSwaras.length;
+      const cycleLen = talaBeats;
+      const cycles = Math.floor(totalBeats / cycleLen) || 1;
+      return {
+        pallavi: beatSwaras.slice(0, Math.floor(cycles * 0.4) * cycleLen),
+        anupallavi: beatSwaras.slice(Math.floor(cycles * 0.4) * cycleLen, Math.floor(cycles * 0.7) * cycleLen),
+        charanam: beatSwaras.slice(Math.floor(cycles * 0.7) * cycleLen)
+      };
+    }
+    const pEnd = Math.max(...segments.filter(s => s.section === 'PALLAVI').map(s => s.end), 0);
+    const aEnd = Math.max(...segments.filter(s => s.section === 'ANUPALLAVI').map(s => s.end), pEnd);
+    const totalDur = Math.max(...segments.map(s => s.end), beatSwaras.length * (60/tempo));
+    const pBeat = Math.floor((pEnd / totalDur) * beatSwaras.length);
+    const aBeat = Math.floor((aEnd / totalDur) * beatSwaras.length);
+    return {
+      pallavi: beatSwaras.slice(0, pBeat),
+      anupallavi: beatSwaras.slice(pBeat, aBeat),
+      charanam: beatSwaras.slice(aBeat)
+    };
   }
-  const sectionsData = splitSections(beatSwaras);
-  const demo = RAGA_DEMO_LYRICS[ragaName] || {};
-  return { tala: tala.name || 'Adi', talaObj: tala, tempo, notation: buildNotation(beatSwaras), beatSwaras, ...sectionsData,
-    lyrics: { pallavi: demo.pallavi || '', anupallavi: demo.anupallavi || '', charanam: demo.charanam || '', sahityam: demo.sahityam || '' }
+
+  const sectionsData = splitByDetectedSections(beatSwaras, carnaticSegments);
+  return {
+    tala: tala.name || 'Adi', talaObj: tala, tempo,
+    notation: buildNotation(beatSwaras), beatSwaras,
+    ...sectionsData
   };
 }
 
-function buildLyricsData(raga, sahityamGrid, transcription) {
-  const demo = RAGA_DEMO_LYRICS[raga.label] || {};
+function buildLyricsData(raga, sahityamGrid, transcription, sectionLyrics) {
+  const sections = sectionLyrics || { pallavi: '', anupallavi: '', charanam: '', sahityam: '' };
+
+  // Fallback: if no section lyrics from segments, split raw transcription by word count
+  if (!sections.pallavi && transcription?.text) {
+    const words = transcription.text.split(/\s+/);
+    const third = Math.floor(words.length / 3);
+    sections.pallavi = words.slice(0, third).join(' ');
+    sections.anupallavi = words.slice(third, third * 2).join(' ');
+    sections.charanam = words.slice(third * 2).join(' ');
+    sections.sahityam = transcription.text;
+  }
+
   return {
     raga: raga.label, aroha: raga.aroha, avaroha: raga.avaroha,
     tala: sahityamGrid?.tala || 'Adi', tempo: sahityamGrid?.tempo || 80,
-    sections: {
-      pallavi: demo.pallavi || transcription?.text?.slice(0, 60) || '',
-      anupallavi: demo.anupallavi || transcription?.text?.slice(60, 120) || '',
-      charanam: demo.charanam || transcription?.text?.slice(120, 200) || '',
-      sahityam: demo.sahityam || transcription?.text || ''
-    },
+    sections,
     transcription: transcription || null,
     swaraGrid: sahityamGrid?.notation || ''
   };
 }
 
-function buildStemInfo(ragaResult) {
-  const demo = RAGA_DEMO_LYRICS[ragaResult.label] || {};
+function buildStemInfo(ragaResult, carnaticSegments = []) {
   const swAroha = (ragaResult.aroha || 'S R G M P D N S').split(/\s+/).filter(Boolean);
   const swAvar = (ragaResult.avaroha || 'S N D P M G R S').split(/\s+/).filter(Boolean);
-  const swPall = (demo.swaras_pallavi || ragaResult.aroha || 'S R G M P').split(/\s+/).filter(Boolean);
-  const swAnup = (demo.swaras_anupallavi || ragaResult.avaroha || 'S N D P').split(/\s+/).filter(Boolean);
+
+  const pSegs = carnaticSegments.filter(s => s.section === 'PALLAVI' && s.type === 'SAHITYA');
+  const aSegs = carnaticSegments.filter(s => s.section === 'ANUPALLAVI' && s.type === 'SAHITYA');
+
+  const swPall = pSegs.length ? extractSwarasFromSegments(pSegs) : swAroha.slice(0, 5);
+  const swAnup = aSegs.length ? extractSwarasFromSegments(aSegs) : swAvar.slice(0, 4);
+
   return {
     stems: [
-      { id:'vocal', label:'Human Vocal / Voice', icon:'🎤', role:'Primary melodic voice', swaras:swPall, midiProgram:52, midiChannel:4, lyric: demo.pallavi || (ragaResult.label + ' — Pallavi'), notes: swPall.map(s => SWARA_DISPLAY[s] || s) },
-      { id:'veena', label:'Veena / Melodic Lead', icon:'🪕', role:'Full raga scale', swaras:[...swAroha,...swAvar], midiProgram:24, midiChannel:0, lyric:'', notes:[...swAroha,...swAvar].map(s => SWARA_DISPLAY[s] || s) },
-      { id:'tampura', label:'Tampura / Drone', icon:'🎸', role:'Sustained Sa-Pa-Sa', swaras:['S','P','S','P'], midiProgram:24, midiChannel:1, lyric:'', notes:['S','P','S','P'] },
-      { id:'mridangam', label:'Mridangam / Percussion', icon:'🥁', role:'Tala keeper', swaras:[], midiProgram:116, midiChannel:9, lyric:'', notes:['dha','ki','ṭa','ta'] },
-      { id:'violin', label:'Violin / Bowing', icon:'🎻', role:'Melodic accompaniment', swaras:[...swAnup,...swAroha], midiProgram:40, midiChannel:2, lyric:'', notes:[...swAnup,...swAroha].map(s => SWARA_DISPLAY[s] || s) }
-    ],
-    aroha: ragaResult.aroha, avaroha: ragaResult.avaroha, demoLyrics: demo
+      { id:'vocal', label:'Human Vocal / Voice', icon:'🎤', role:'Primary melodic voice', swaras:swPall, midiProgram:52, midiChannel:4, lyric: (carnaticSegments.find(s => s.section === 'PALLAVI' && s.line)?.line) || (ragaResult.label + ' — Pallavi'), notes: swPall.map(s => SWARA_DISPLAY[s] || s) },
+      { id:'veena', label:'Veena / Melodic Lead', icon:'🪕', role:'Full raga scale', swaras:[...swAroha,...swAvar], midiProgram:24, midiChannel:0, lyric: ragaResult.label + ' — Arohana/Avarohana', notes: [...swAroha,...swAvar].map(s => SWARA_DISPLAY[s] || s) },
+      { id:'violin', label:'Violin / Strings', icon:'🎻', role:'Melodic accompaniment', swaras:swAnup, midiProgram:41, midiChannel:1, lyric: (carnaticSegments.find(s => s.section === 'ANUPALLAVI' && s.line)?.line) || (ragaResult.label + ' — Anupallavi'), notes: swAnup.map(s => SWARA_DISPLAY[s] || s) },
+      { id:'mridangam', label:'Mridangam / Percussion', icon:'🥁', role:'Tala keeper', swaras:['.'], midiProgram:117, midiChannel:9, lyric: 'Adi Tala', notes:['.'] },
+      { id:'flute', label:'Flute / Wind', icon:'🎵', role:'Interlude / Phrases', swaras:swAroha, midiProgram:74, midiChannel:2, lyric: ragaResult.label + ' — Flute phrases', notes: swAroha.map(s => SWARA_DISPLAY[s] || s) }
+    ]
   };
+}
+
+function extractSwarasFromSegments(segments) {
+  const swaraCounts = {};
+  for (const seg of segments) {
+    if (seg.pitchMean > 0) {
+      const midi = Math.round(12 * Math.log2(seg.pitchMean / 440) + 69);
+      const semi = ((midi - 60) % 12 + 12) % 12;
+      const sw = SEMI_TO_SWARA_DEFAULT[semi] || 'S';
+      swaraCounts[sw] = (swaraCounts[sw] || 0) + 1;
+    }
+  }
+  return Object.entries(swaraCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(x => x[0]);
 }
 
 const _cache = new Map();
@@ -542,16 +588,50 @@ async function analyseFile(filePath, originalName, fileSize, sourceUrl, opts = {
     : { aroha: raga.aroha, avaroha: raga.avaroha, detectedAroha: raga.aroha, detectedAvaroha: raga.avaroha };
 
   const swaraFrames = pitchFrames.length > 0 ? evaluateSwaras(pitchFrames, semiToSwara, sampleRate) : [];
-  const sahityamGrid = swaraFrames.length > 0 ? buildSahityamGrid(swaraFrames, pitchFrames, talaResult, tempoResult.bpm, raga.label, sampleRate) : null;
-  const lyricsData = buildLyricsData(raga, sahityamGrid, transcription);
+  const totalDuration = pcmData.length / sampleRate;
+
+  // Write PCM to temp file for Python segmenter (non-blocking)
+  const pcmTmpPath = path.join(os.tmpdir(), `gm_pcm_${Date.now()}.raw`);
+  const floatArray = new Float32Array(pcmData);
+  fs.writeFileSync(pcmTmpPath, Buffer.from(floatArray.buffer));
+
+  let carnaticSegments = [];
+  try {
+    // Audio-only segmentation — NO hardcoded lyrics
+    carnaticSegments = await analyzeCarnaticAudio(pcmTmpPath, sampleRate, totalDuration, {
+      pallaviEnd: 90, anupallaviEnd: 180
+    });
+  } catch (e) {
+    console.warn('[GoMaa] Segmenter error:', e.message);
+  }
+  try { fs.unlinkSync(pcmTmpPath); } catch (_) {}
+
+  // Map actual Whisper transcription words to detected segments by timestamp
+  const alignedSegments = assignTranscriptionToSegments(transcription, carnaticSegments);
+
+  // Build real Pallavi/Anupallavi/Charanam lyrics from transcription
+  const sectionLyrics = buildSectionLyrics(alignedSegments);
+  const sahityamGrid = swaraFrames.length > 0 ? buildSahityamGrid(swaraFrames, pitchFrames, talaResult, tempoResult.bpm, raga.label, sampleRate, alignedSegments) : null;
+  const lyricsData = buildLyricsData(raga, sahityamGrid, transcription, sectionLyrics);
 
   const mergedGamakas = [...new Set([...(detectedGamakas.length ? detectedGamakas : []), ...(raga.gamakas || ['kampita'])])];
   raga.gamakas = mergedGamakas;
 
   let sheet = '', midi = '', stems = {};
-  try { sheet = generateSheetMusicXml(raga, sahityamGrid ? { tala: talaResult.name, sections: { pallavi: sahityamGrid.pallavi, anupallavi: sahityamGrid.anupallavi, charanam: sahityamGrid.charanam } } : { tala: talaResult.name }); } catch(e) { console.warn('[GoMaa] sheet gen error:', e.message); }
+  try {
+    sheet = generateSheetMusicXml(raga, {
+      tala: talaResult.name,
+      transcription: {
+        full: String(transcription?.text || ''),
+        pallavi: String(sectionLyrics?.pallavi || ''),
+        anupallavi: String(sectionLyrics?.anupallavi || ''),
+        charanam: String(sectionLyrics?.charanam || '')
+      },
+      pitchFrames: pitchFrames
+    });
+  } catch(e) { console.warn('[GoMaa] sheet gen error:', e.message); }
   try { midi = generateMidi(raga, { instruments: ['veena', 'tampura', 'mridangam', 'violin'], tempo: tempoResult.bpm }); } catch(e) { console.warn('[GoMaa] midi gen error:', e.message); }
-  try { stems = buildStemInfo(raga); } catch(e) {}
+  try { stems = buildStemInfo(raga, alignedSegments); } catch(e) {}
 
   let fp = { hash: '', peaks: [] };
   let embed = { vector: [] };
@@ -675,7 +755,7 @@ router.get('/stems/:id', async (req, res) => {
     const row = db.get('SELECT * FROM music WHERE id=?', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Not found' });
     const raga = { label: row.raga, aroha: row.aroha, avaroha: row.avaroha, mood: row.mood, gamakas: JSON.parse(row.gamakas || '[]') };
-    res.json(buildStemInfo(raga));
+    res.json(buildStemInfo(raga, []));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

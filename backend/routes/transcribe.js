@@ -13,7 +13,7 @@ const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 500 * 1024 * 1024 
 
 const PY = process.platform === 'win32' ? 'python' : 'python3';
 
-async function runTranscription(audioPath, lang = 'te', modelSize = 'base') {
+async function runTranscription(audioPath, lang, modelSize) {
   const tmpOut = path.join(os.tmpdir(), `gm_trans_${Date.now()}.json`);
   const script = `import sys, json, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -23,12 +23,22 @@ try:
 except Exception as e:
     print(json.dumps({"error": str(e), "available": False}))
     sys.exit(1)
-audio = sys.argv[1]; lang = sys.argv[2]; size = sys.argv[3]; outfile = sys.argv[4]
+audio = sys.argv[1]
+lang = sys.argv[2] if sys.argv[2] else None
+size = sys.argv[3]
+outfile = sys.argv[4]
 model = WhisperModel(size, device='cpu', compute_type='int8')
-segs, info = model.transcribe(audio, language=lang, beam_size=5, vad_filter=True,
-    vad_parameters=dict(min_silence_duration_ms=200, speech_pad_ms=100),
-    word_timestamps=True, condition_on_previous_text=True, temperature=0.0,
-    no_speech_threshold=0.3, log_prob_threshold=-0.6)
+
+# Build kwargs
+kw = dict(beam_size=5, vad_filter=True,
+    vad_parameters=dict(min_silence_duration_ms=300, speech_pad_ms=150),
+    word_timestamps=True, condition_on_previous_text=True, patience=1,
+    temperature=0.0, no_speech_threshold=0.4, log_prob_threshold=-0.8,
+    compression_ratio_threshold=2.4)
+if lang:
+    kw['language'] = lang
+
+segs, info = model.transcribe(audio, **kw)
 result = {'language': info.language, 'confidence': float(info.language_probability),
           'duration': float(info.duration), 'text': '', 'segments': [], 'words': [], 'available': True}
 texts = []
@@ -46,7 +56,7 @@ print('OK')`;
   const tmpScript = path.join(os.tmpdir(), `gm_transcribe_${Date.now()}.py`);
   fs.writeFileSync(tmpScript, script);
   return new Promise((resolve) => {
-    const proc = spawn(PY, [tmpScript, audioPath, lang, modelSize, tmpOut], {
+    const proc = spawn(PY, [tmpScript, audioPath, lang || '', modelSize, tmpOut], {
       timeout: 300000,
       env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1',
              HF_HUB_DISABLE_SYMLINKS_WARNING: '1', TOKENIZERS_PARALLELISM: 'false' }
@@ -68,7 +78,7 @@ print('OK')`;
 router.post('/', upload.single('audio'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const lang = req.headers['x-language'] || req.body?.language || 'te';
+    const lang = req.headers['x-language'] || req.body?.language || '';
     const model = req.headers['x-model'] || req.body?.model || 'base';
     const result = await runTranscription(req.file.path, lang, model);
     setTimeout(() => { try { fs.unlinkSync(req.file.path); } catch(_) {} }, 60000);
@@ -87,7 +97,7 @@ router.post('/buffer', express.raw({ type: '*/*', limit: '500mb' }), async (req,
     const ext = (xfn.match(/\.(mp3|wav|ogg|flac|webm|m4a)$/i) || ['.webm'])[0];
     const fp = path.join(UPLOAD_DIR, `trans_${id}${ext}`);
     fs.writeFileSync(fp, req.body);
-    const result = await runTranscription(fp, req.headers['x-language'] || 'te', req.headers['x-model'] || 'base');
+    const result = await runTranscription(fp, req.headers['x-language'] || '', req.headers['x-model'] || 'base');
     setTimeout(() => { try { fs.unlinkSync(fp); } catch(_) {} }, 60000);
     res.json(result);
   } catch (e) {
@@ -97,3 +107,4 @@ router.post('/buffer', express.raw({ type: '*/*', limit: '500mb' }), async (req,
 });
 
 module.exports = router;
+module.exports.runTranscription = runTranscription;

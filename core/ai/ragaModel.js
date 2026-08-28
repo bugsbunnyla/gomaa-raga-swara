@@ -638,4 +638,17 @@ function detectRagaFromScale(arohaStr, avarohaStr) {
   return _buildResult(best, ranked, 'scale-input');
 }
 
+
+/**
+ * detectRagaFromChroma — use pre-computed chroma from actual audio analysis
+ * instead of filename/hash heuristics.
+ */
+function detectRagaFromChroma(chroma, detectedSemis) {
+  if (!chroma || chroma.length !== 12) {
+    return _buildResult(_normed[0], _normed, 'chroma-fallback');
+  }
+  const ranked = _scoreAllCombined(chroma, detectedSemis || []);
+  return _buildResult(ranked[0], ranked, 'audio-chroma');
+}
+
 module.exports = { detectRaga, detectRagamalika, detectRagaFromScale };
