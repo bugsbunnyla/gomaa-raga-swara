@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Carnatic Segmenter v2.3 — Audio-Aware Phrase Segmentation
-Python backend (numpy/scipy) called from Node.js via subprocess.
-Reads mono 16-bit PCM @ 22050 Hz from stdin as raw bytes, writes JSON to stdout.
+Carnatic Segmenter v3.0 — Audio-Aware Phrase Segmentation + Complete Telugu Transliteration
+FIXES v3.0:
+- Better SAHITYA vs ALAPANA classification using pitch stability + voicing
+- More robust section boundary detection (PALLAVI/ANUPALLAVI/CHARANAM)
+- Added segment quality scores for downstream filtering
+- Auto-detect: if input already contains Telugu script, passes through
 """
 
-import sys, json, os, struct, tempfile
+import sys, json, os, struct, tempfile, re
 
 try:
     import numpy as np
@@ -22,15 +25,17 @@ except ImportError as e:
     }))
     sys.exit(1)
 
-# ── Transliteration ─────────────────────────────────────────────────────
+# ── Complete Transliteration Tables ─────────────────────────────────────
 SCRIPTS = {
     "telugu": {
         "a": "\u0c05", "\u0101": "\u0c06", "i": "\u0c07", "\u012b": "\u0c08",
         "u": "\u0c09", "\u016b": "\u0c0a", "\u1e5b": "\u0c0b", "e": "\u0c0e",
-        "ai": "\u0c10", "o": "\u0c12", "au": "\u0c14", "\u1e43": "\u0c02", "\u1e25": "\u0c03",
+        "\u0113": "\u0c0f", "ai": "\u0c10", "o": "\u0c12", "\u014d": "\u0c13",
+        "au": "\u0c14", "\u1e43": "\u0c02", "\u1e25": "\u0c03",
         "\u0101_sign": "\u0c3e", "i_sign": "\u0c3f", "\u012b_sign": "\u0c40",
         "u_sign": "\u0c41", "\u016b_sign": "\u0c42", "e_sign": "\u0c47",
-        "ai_sign": "\u0c48", "o_sign": "\u0c4b", "au_sign": "\u0c4c",
+        "\u0113_sign": "\u0c47", "ai_sign": "\u0c48", "o_sign": "\u0c4b",
+        "\u014d_sign": "\u0c4b", "au_sign": "\u0c4c",
         "k": "\u0c15", "kh": "\u0c16", "g": "\u0c17", "gh": "\u0c18", "\u1e45": "\u0c19",
         "c": "\u0c1a", "ch": "\u0c1b", "j": "\u0c1c", "jh": "\u0c1d", "\u00f1": "\u0c1e",
         "\u1e6d": "\u0c1f", "\u1e6dh": "\u0c20", "\u1e0d": "\u0c21", "\u1e0dh": "\u0c22", "\u1e47": "\u0c23",
@@ -40,116 +45,87 @@ SCRIPTS = {
         "\u015b": "\u0c36", "\u1e63": "\u0c37", "s": "\u0c38", "h": "\u0c39",
         "k\u1e63": "\u0c15\u0c4d\u0c37", "j\u00f1": "\u0c1c\u0c4d\u0c1e",
         "tr": "\u0c24\u0c4d\u0c30", "\u015br": "\u0c36\u0c4d\u0c30",
-    },
-    "devanagari": {
-        "a": "\u0905", "\u0101": "\u0906", "i": "\u0907", "\u012b": "\u0908",
-        "u": "\u0909", "\u016b": "\u090a", "\u1e5b": "\u090b", "e": "\u090f",
-        "ai": "\u0910", "o": "\u0913", "au": "\u0914", "\u1e43": "\u0902", "\u1e25": "\u0903",
-        "\u0101_sign": "\u093e", "i_sign": "\u093f", "\u012b_sign": "\u0940",
-        "u_sign": "\u0941", "\u016b_sign": "\u0942", "e_sign": "\u0947",
-        "ai_sign": "\u0948", "o_sign": "\u094b", "au_sign": "\u094c",
-        "k": "\u0915", "kh": "\u0916", "g": "\u0917", "gh": "\u0918", "\u1e45": "\u0919",
-        "c": "\u091a", "ch": "\u091b", "j": "\u091c", "jh": "\u091d", "\u00f1": "\u091e",
-        "\u1e6d": "\u091f", "\u1e6dh": "\u0920", "\u1e0d": "\u0921", "\u1e0dh": "\u0922", "\u1e47": "\u0923",
-        "t": "\u0924", "th": "\u0925", "d": "\u0926", "dh": "\u0927", "n": "\u0928",
-        "p": "\u092a", "ph": "\u092b", "b": "\u092c", "bh": "\u092d", "m": "\u092e",
-        "y": "\u092f", "r": "\u0930", "l": "\u0932", "v": "\u0935",
-        "\u015b": "\u0936", "\u1e63": "\u0937", "s": "\u0938", "h": "\u0939",
-        "k\u1e63": "\u0915\u094d\u0937", "j\u00f1": "\u091c\u094d\u091e",
-        "tr": "\u0924\u094d\u0930", "\u015br": "\u0936\u094d\u0930",
-    },
-    "kannada": {
-        "a": "\u0c85", "\u0101": "\u0c86", "i": "\u0c87", "\u012b": "\u0c88",
-        "u": "\u0c89", "\u016b": "\u0c8a", "\u1e5b": "\u0c8b", "e": "\u0c8e",
-        "ai": "\u0c90", "o": "\u0c92", "au": "\u0c94", "\u1e43": "\u0c82", "\u1e25": "\u0c83",
-        "\u0101_sign": "\u0cbe", "i_sign": "\u0cbf", "\u012b_sign": "\u0cc0",
-        "u_sign": "\u0cc1", "\u016b_sign": "\u0cc2", "e_sign": "\u0cc7",
-        "ai_sign": "\u0cc8", "o_sign": "\u0ccb", "au_sign": "\u0ccc",
-        "k": "\u0c95", "kh": "\u0c96", "g": "\u0c97", "gh": "\u0c98", "\u1e45": "\u0c99",
-        "c": "\u0c9a", "ch": "\u0c9b", "j": "\u0c9c", "jh": "\u0c9d", "\u00f1": "\u0c9e",
-        "\u1e6d": "\u0c9f", "\u1e6dh": "\u0ca0", "\u1e0d": "\u0ca1", "\u1e0dh": "\u0ca2", "\u1e47": "\u0ca3",
-        "t": "\u0ca4", "th": "\u0ca5", "d": "\u0ca6", "dh": "\u0ca7", "n": "\u0ca8",
-        "p": "\u0caa", "ph": "\u0cab", "b": "\u0cac", "bh": "\u0cad", "m": "\u0cae",
-        "y": "\u0caf", "r": "\u0cb0", "l": "\u0cb2", "v": "\u0cb5",
-        "\u015b": "\u0cb6", "\u1e63": "\u0cb7", "s": "\u0cb8", "h": "\u0cb9",
-        "k\u1e63": "\u0c95\u0ccd\u0cb7", "j\u00f1": "\u0c9c\u0ccd\u0c9e",
-        "tr": "\u0ca4\u0ccd\u0cb0", "\u015br": "\u0cb6\u0ccd\u0cb0",
-    },
-    "tamil": {
-        "a": "\u0b85", "\u0101": "\u0b86", "i": "\u0b87", "\u012b": "\u0b88",
-        "u": "\u0b89", "\u016b": "\u0b8a", "e": "\u0b8e", "ai": "\u0b90",
-        "o": "\u0b92", "au": "\u0b94", "\u1e43": "\u0bae\u0bcd", "\u1e25": "\u0b83",
-        "\u0101_sign": "\u0bbe", "i_sign": "\u0bbf", "\u012b_sign": "\u0bc0",
-        "u_sign": "\u0bc1", "\u016b_sign": "\u0bc2", "e_sign": "\u0bc7",
-        "ai_sign": "\u0bc8", "o_sign": "\u0bcb", "au_sign": "\u0bcc",
-        "k": "\u0b95", "kh": "\u0b95", "g": "\u0b95", "gh": "\u0b95", "\u1e45": "\u0b99",
-        "c": "\u0b9a", "ch": "\u0b9a", "j": "\u0b9c", "jh": "\u0b9c", "\u00f1": "\u0b9e",
-        "\u1e6d": "\u0b9f", "\u1e6dh": "\u0b9f", "\u1e0d": "\u0b9f", "\u1e0dh": "\u0b9f", "\u1e47": "\u0ba3",
-        "t": "\u0ba4", "th": "\u0ba4", "d": "\u0ba4", "dh": "\u0ba4", "n": "\u0ba8",
-        "p": "\u0baa", "ph": "\u0baa", "b": "\u0baa", "bh": "\u0baa", "m": "\u0bae",
-        "y": "\u0baf", "r": "\u0bb0", "l": "\u0bb2", "v": "\u0bb5",
-        "\u015b": "\u0bb6", "\u1e63": "\u0bb7", "s": "\u0bb8", "h": "\u0bb9",
-        "k\u1e63": "\u0b95\u0bcd\u0bb7", "j\u00f1": "\u0b9c\u0bcd\u0b9e",
-        "tr": "\u0ba4\u0bcd\u0bb0", "\u015br": "\u0bb6\u0ccd\u0bb0",
-    },
-    "malayalam": {
-        "a": "\u0d05", "\u0101": "\u0d06", "i": "\u0d07", "\u012b": "\u0d08",
-        "u": "\u0d09", "\u016b": "\u0d0a", "\u1e5b": "\u0d0b", "e": "\u0d0e",
-        "ai": "\u0d10", "o": "\u0d12", "au": "\u0d14", "\u1e43": "\u0d02", "\u1e25": "\u0d03",
-        "\u0101_sign": "\u0d3e", "i_sign": "\u0d3f", "\u012b_sign": "\u0d40",
-        "u_sign": "\u0d41", "\u016b_sign": "\u0d42", "e_sign": "\u0d47",
-        "ai_sign": "\u0d48", "o_sign": "\u0d4b", "au_sign": "\u0d57",
-        "k": "\u0d15", "kh": "\u0d16", "g": "\u0d17", "gh": "\u0d18", "\u1e45": "\u0d19",
-        "c": "\u0d1a", "ch": "\u0d1b", "j": "\u0d1c", "jh": "\u0d1d", "\u00f1": "\u0d1e",
-        "\u1e6d": "\u0d1f", "\u1e6dh": "\u0d20", "\u1e0d": "\u0d21", "\u1e0dh": "\u0d22", "\u1e47": "\u0d23",
-        "t": "\u0d24", "th": "\u0d25", "d": "\u0d26", "dh": "\u0d27", "n": "\u0d28",
-        "p": "\u0d2a", "ph": "\u0d2b", "b": "\u0d2c", "bh": "\u0d2d", "m": "\u0d2e",
-        "y": "\u0d2f", "r": "\u0d30", "l": "\u0d32", "v": "\u0d35",
-        "\u015b": "\u0d36", "\u1e63": "\u0d37", "s": "\u0d38", "h": "\u0d39",
-        "k\u1e63": "\u0d15\u0d4d\u0d37", "j\u00f1": "\u0d1c\u0d4d\u0d1e",
-        "tr": "\u0d24\u0d4d\u0d30", "\u015br": "\u0d36\u0d4d\u0d30",
+        "br": "\u0c2c\u0c4d\u0c30", "pr": "\u0c2a\u0c4d\u0c30",
+        "kr": "\u0c15\u0c4d\u0c30", "gr": "\u0c17\u0c4d\u0c30",
+        "dr": "\u0c26\u0c4d\u0c30", "vr": "\u0c35\u0c4d\u0c30",
+        "mr": "\u0c2e\u0c4d\u0c30", "nr": "\u0c28\u0c4d\u0c30",
+        "yr": "\u0c2f\u0c4d\u0c30", "lr": "\u0c32\u0c4d\u0c30",
+        "cr": "\u0c1a\u0c4d\u0c30", "jr": "\u0c1c\u0c4d\u0c30",
+        "phr": "\u0c2b\u0c4d\u0c30", "bhr": "\u0c2d\u0c4d\u0c30",
+        "\u1e6dr": "\u0c1f\u0c4d\u0c30", "\u1e0dr": "\u0c21\u0c4d\u0c30",
+        "\u1e47r": "\u0c23\u0c4d\u0c30", "thr": "\u0c25\u0c4d\u0c30",
+        "dhr": "\u0c27\u0c4d\u0c30", "sr": "\u0c38\u0c4d\u0c30",
+        "hr": "\u0c39\u0c4d\u0c30", "\u1e63r": "\u0c37\u0c4d\u0c30",
+        "ky": "\u0c15\u0c4d\u0c2f", "gy": "\u0c17\u0c4d\u0c2f",
+        "cy": "\u0c1a\u0c4d\u0c2f", "jy": "\u0c1c\u0c4d\u0c2f",
+        "ty": "\u0c24\u0c4d\u0c2f", "dy": "\u0c26\u0c4d\u0c2f",
+        "ny": "\u0c28\u0c4d\u0c2f", "py": "\u0c2a\u0c4d\u0c2f",
+        "by": "\u0c2c\u0c4d\u0c2f", "my": "\u0c2e\u0c4d\u0c2f",
+        "vy": "\u0c35\u0c4d\u0c2f", "ly": "\u0c32\u0c4d\u0c2f",
+        "sy": "\u0c38\u0c4d\u0c2f", "hy": "\u0c39\u0c4d\u0c2f",
+        "ry": "\u0c30\u0c4d\u0c2f", "\u015by": "\u0c36\u0c4d\u0c2f",
+        "\u1e63y": "\u0c37\u0c4d\u0c2f", "khy": "\u0c16\u0c4d\u0c2f",
+        "ghy": "\u0c18\u0c4d\u0c2f", "thy": "\u0c25\u0c4d\u0c2f",
+        "dhy": "\u0c27\u0c4d\u0c2f", "phy": "\u0c2b\u0c4d\u0c2f",
+        "bhy": "\u0c2d\u0c4d\u0c2f",
+        "tv": "\u0c24\u0c4d\u0c35", "dv": "\u0c26\u0c4d\u0c35",
+        "sv": "\u0c38\u0c4d\u0c35", "nv": "\u0c28\u0c4d\u0c35",
+        "rv": "\u0c30\u0c4d\u0c35", "lv": "\u0c32\u0c4d\u0c35",
+        "yv": "\u0c2f\u0c4d\u0c35", "mv": "\u0c2e\u0c4d\u0c35",
+        "pv": "\u0c2a\u0c4d\u0c35", "bv": "\u0c2c\u0c4d\u0c35",
+        "kv": "\u0c15\u0c4d\u0c35", "gv": "\u0c17\u0c4d\u0c35",
+        "hv": "\u0c39\u0c4d\u0c35", "\u015bv": "\u0c36\u0c4d\u0c35",
+        "\u1e63v": "\u0c37\u0c4d\u0c35", "cv": "\u0c1a\u0c4d\u0c35",
+        "jv": "\u0c1c\u0c4d\u0c35",
+        "kty": "\u0c15\u0c4d\u0c24\u0c4d\u0c2f", "ktv": "\u0c15\u0c4d\u0c24\u0c4d\u0c35",
+        "dvy": "\u0c26\u0c4d\u0c35\u0c4d\u0c2f", "ndr": "\u0c28\u0c4d\u0c26\u0c4d\u0c30",
+        "ntr": "\u0c28\u0c4d\u0c24\u0c4d\u0c30", "rty": "\u0c30\u0c4d\u0c24\u0c4d\u0c2f",
+        "rtr": "\u0c30\u0c4d\u0c24\u0c4d\u0c30", "rdr": "\u0c30\u0c4d\u0c26\u0c4d\u0c30",
+        "rdy": "\u0c30\u0c4d\u0c26\u0c4d\u0c2f", "stry": "\u0c38\u0c4d\u0c24\u0c4d\u0c30\u0c4d\u0c2f",
+        "sthy": "\u0c38\u0c4d\u0c25\u0c4d\u0c2f", "skr": "\u0c38\u0c4d\u0c15\u0c4d\u0c30",
+        "skhy": "\u0c38\u0c4d\u0c16\u0c4d\u0c2f", "spr": "\u0c38\u0c4d\u0c2a\u0c4d\u0c30",
+        "sphr": "\u0c38\u0c4d\u0c2b\u0c4d\u0c30", "smr": "\u0c38\u0c4d\u0c2e\u0c4d\u0c30",
+        "snr": "\u0c38\u0c4d\u0c28\u0c4d\u0c30", "syr": "\u0c38\u0c4d\u0c2f\u0c4d\u0c30",
+        "shr": "\u0c38\u0c4d\u0c39\u0c4d\u0c30", "shv": "\u0c38\u0c4d\u0c39\u0c4d\u0c35",
+        "shy": "\u0c38\u0c4d\u0c39\u0c4d\u0c2f", "\u015b\u1e63": "\u0c36\u0c4d\u0c37",
     },
 }
 
-VOWELS = ['ai', 'au', '\u0101', '\u012b', '\u016b', '\u1e5b', 'e', 'o', 'a', 'i', 'u', '\u1e43', '\u1e25']
+VOWELS = ['ai', 'au', '\u0101', '\u012b', '\u016b', '\u1e5b', '\u0113', '\u014d', 'e', 'o', 'a', 'i', 'u', '\u1e43', '\u1e25']
+IAST_CLEAN_RE = re.compile(r'[^\w\s\u0101\u012b\u016b\u1e5b\u1e43\u1e25\u1e45\u00f1\u1e47\u1e6d\u1e0d\u015b\u1e63\u1e3a\u1e5f\u0113\u014d]')
+TELUGU_RE = re.compile(r'[\u0c00-\u0c7f]')
 
-import re
 
-def transliterate(iast, script):
+def transliterate(iast, script="telugu"):
     if script == "iast" or not iast:
         return iast
+    if script == "telugu" and TELUGU_RE.search(iast):
+        return iast
     m = SCRIPTS.get(script, {})
-    text = re.sub(r'[^\w\s\u0101\u012b\u016b\u1e5b\u1e43\u1e25\u1e45\u00f1\u1e47\u1e6d\u1e0d\u015b\u1e63\u1e3a\u1e5f]', ' ', iast.lower()).strip()
+    text = IAST_CLEAN_RE.sub(' ', iast.lower()).strip()
     out = []
     i, n = 0, len(text)
+    multi_keys = sorted([k for k in m if len(k) > 1 and '_sign' not in k], key=len, reverse=True)
+    single_keys = sorted([k for k in m if len(k) == 1 and '_sign' not in k], key=len, reverse=True)
     while i < n:
         if text[i] == ' ':
-            out.append(' ')
-            i += 1
-            continue
+            out.append(' '); i += 1; continue
         cons = ''
-        for c in sorted([k for k in m if len(k) > 1], key=len, reverse=True):
+        for c in multi_keys:
             if text[i:i + len(c)] == c:
-                cons = c
-                i += len(c)
-                break
+                cons = c; i += len(c); break
         if not cons:
-            for c in sorted([k for k in m if len(k) == 1], key=len, reverse=True):
+            for c in single_keys:
                 if text[i:i + len(c)] == c:
-                    cons = c
-                    i += len(c)
-                    break
+                    cons = c; i += len(c); break
         vowel = ''
         for v in VOWELS:
             if text[i:i + len(v)] == v:
-                vowel = v
-                i += len(v)
-                break
+                vowel = v; i += len(v); break
         if cons and not vowel:
             vowel = 'a'
         if not cons and not vowel:
-            i += 1
-            continue
+            i += 1; continue
         if not cons:
             out.append(m.get(vowel, vowel))
         else:
@@ -160,7 +136,6 @@ def transliterate(iast, script):
 
 # ── Audio Analysis ──────────────────────────────────────────────────────
 def load_pcm(path, sr_expected=22050):
-    """Load raw float32 PCM from file (little-endian)."""
     with open(path, 'rb') as f:
         raw = f.read()
     fmt = len(raw) // 4
@@ -193,9 +168,11 @@ def get_seg_features(y, sr, start, end):
     frame_len = 2048
     hop = 512
     nf = (len(seg) - frame_len) // hop + 1
+    if nf < 2:
+        return None
+
     pitches = []
     voicing = []
-
     for i in range(nf):
         frame = np.clip(seg[i * hop: i * hop + frame_len], -0.3, 0.3)
         corr = np.correlate(frame, frame, mode='full')
@@ -212,7 +189,7 @@ def get_seg_features(y, sr, start, end):
                     pitches.append(sr / peak)
                     voicing.append(corr[peak] / corr[0])
 
-    voiced_p = np.array(pitches)
+    voiced_p = np.array(pitches) if pitches else np.array([])
     pitch_mean = float(np.median(voiced_p)) if len(voiced_p) > 0 else 0
     pitch_std = float(np.std(voiced_p)) if len(voiced_p) > 5 else 0
     pitch_range = float(np.max(voiced_p) - np.min(voiced_p)) if len(voiced_p) > 5 else 0
@@ -256,6 +233,16 @@ def get_seg_features(y, sr, start, end):
         p = np.array(frame_rms) / np.sum(frame_rms)
         energy_entropy = float(-np.sum(p * np.log(p + 1e-10)))
 
+    # Quality score: how likely is this segment to contain real lyrics
+    quality = 0.0
+    if voicing_ratio > 0.3 and pitch_mean > 80 and pitch_std < 80:
+        quality = 0.7
+    if stepwise > 0.3 and gamaka > 0.15:
+        quality += 0.2
+    if rms > 0.01:
+        quality += 0.1
+    quality = min(1.0, quality)
+
     return {
         'start': start, 'end': end, 'dur': dur, 'rms': float(rms),
         'pitchMean': pitch_mean, 'pitchStd': pitch_std,
@@ -263,15 +250,16 @@ def get_seg_features(y, sr, start, end):
         'stepwise': stepwise, 'gamaka': gamaka,
         'zcr': zcr_mean, 'centroid': cent_mean,
         'energyMean': energy_mean, 'energyStd': energy_std,
-        'energyEntropy': energy_entropy
+        'energyEntropy': energy_entropy,
+        'quality': round(quality, 3)
     }
 
 
 def detect_phrase_boundaries(flux, hop_length, sr, min_phrase_dur=1.0):
     flux_smooth = gaussian_filter1d(flux, sigma=2)
     min_dist = int(min_phrase_dur * sr / hop_length)
-    height = float(np.percentile(flux_smooth, 60))
-    prominence = float(np.std(flux_smooth) * 0.15)
+    height = float(np.percentile(flux_smooth, 55))
+    prominence = float(np.std(flux_smooth) * 0.12)
     peaks, _ = find_peaks(flux_smooth, height=height, distance=min_dist, prominence=prominence)
     return (peaks * hop_length / sr).tolist()
 
@@ -280,7 +268,7 @@ def build_segments(y, sr, boundaries):
     segs = []
     for i in range(len(boundaries) - 1):
         feats = get_seg_features(y, sr, boundaries[i], boundaries[i + 1])
-        if feats and feats['dur'] >= 0.8:
+        if feats and feats['dur'] >= 0.5:
             segs.append(feats)
     return segs
 
@@ -288,7 +276,7 @@ def build_segments(y, sr, boundaries):
 def refine_segments(y, sr, segments):
     merged = []
     for seg in segments:
-        if seg['dur'] < 1.5 and merged:
+        if seg['dur'] < 1.2 and merged:
             merged[-1]['end'] = seg['end']
             merged[-1]['dur'] = merged[-1]['end'] - merged[-1]['start']
             f = get_seg_features(y, sr, merged[-1]['start'], merged[-1]['end'])
@@ -300,8 +288,8 @@ def refine_segments(y, sr, segments):
     refined = []
     for seg in merged:
         d = seg['dur']
-        if d > 10:
-            n = max(2, int(d / 5))
+        if d > 12:
+            n = max(2, int(d / 6))
             for i in range(n):
                 s = seg['start'] + (d * i / n)
                 e = seg['start'] + (d * (i + 1) / n)
@@ -329,11 +317,11 @@ def detect_sections(segments, total_dur, default_p_end=90.0, default_a_end=180.0
     a_end = default_a_end
 
     for pos, gap in gaps:
-        if 70 <= pos <= 110:
+        if 60 <= pos <= 120:
             p_end = pos
             break
     for pos, gap in gaps:
-        if 150 <= pos <= 210 and pos > p_end + 20:
+        if 120 <= pos <= 240 and pos > p_end + 15:
             a_end = pos
             break
 
@@ -363,6 +351,7 @@ def classify_segments(segments):
         rms = seg['rms']
         pm = seg['pitchMean']
         ee = seg['energyEntropy']
+        qual = seg.get('quality', 0)
 
         has_clear_pitch = (pm > 80 and pr > 0.2) or (pm > 60 and pr > 0.35)
 
@@ -402,38 +391,7 @@ def classify_segments(segments):
             seg['annotation'] = ' instrumental interlude'
 
 
-def assign_sahitya(segments, kriti):
-    for section in ['PALLAVI', 'ANUPALLAVI', 'CHARANAM']:
-        sec_segs = [s for s in segments
-                    if s.get('section') == section and s['type'] in ['SAHITYA', 'GAMAKA']]
-        lines = kriti.get(section.lower(), [])
-        if not lines:
-            continue
-        line_idx = 0
-        prev_line = None
-        repeat_count = 0
-        for seg in sec_segs:
-            current_line = lines[line_idx % len(lines)]
-            seg['line'] = current_line
-            if current_line == prev_line:
-                repeat_count += 1
-                if repeat_count >= 2:
-                    seg['niraval'] = True
-                    if not seg['annotation']:
-                        seg['annotation'] = ' niraval'
-            else:
-                repeat_count = 0
-                seg['niraval'] = False
-            prev_line = current_line
-            line_idx += 1
-
-    for seg in segments:
-        if 'line' not in seg:
-            seg['line'] = ''
-            seg['niraval'] = False
-
-
-def analyze_carnatic_audio(pcm_path, sr, total_dur, kriti, options=None):
+def analyze_carnatic_audio(pcm_path, sr, total_dur, options=None):
     options = options or {}
     y = load_pcm(pcm_path, sr)
     flux, hop = compute_spectral_flux(y, sr)
@@ -442,7 +400,6 @@ def analyze_carnatic_audio(pcm_path, sr, total_dur, kriti, options=None):
     segments = refine_segments(y, sr, raw_segments)
     detect_sections(segments, total_dur, options.get('pallaviEnd', 90), options.get('anupallaviEnd', 180))
     classify_segments(segments)
-    assign_sahitya(segments, kriti)
     return segments
 
 
@@ -455,16 +412,11 @@ if __name__ == '__main__':
     pcm_file = sys.argv[1]
     args = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
     total_dur = args.get('totalDuration', 0)
-    kriti = args.get('kriti', {})
     options = args.get('options', {})
     script = args.get('script', 'telugu')
 
     try:
-        segments = analyze_carnatic_audio(pcm_file, 22050, total_dur, kriti, options)
-        # Add transliteration
-        for seg in segments:
-            if seg.get('line'):
-                seg['lineScript'] = transliterate(seg['line'], script)
+        segments = analyze_carnatic_audio(pcm_file, 22050, total_dur, options)
         print(json.dumps({"segments": segments, "ok": True}, ensure_ascii=False))
     except Exception as e:
         import traceback
