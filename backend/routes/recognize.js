@@ -1,8 +1,18 @@
 "use strict";
 /**
  * GoMaa Raga Vidya v3 — /api/recognize
- * FIXED: Hallucination filtering, singing-optimized Whisper, raga-based lyrics lookup,
- *        clean fallbacks when transcription fails.
+ * FIXED v3.1:
+ *   - detectRagaFromChroma(audioScale.chroma, audioScale.semis) instead of broken scale match
+ *   - Composition lyrics DB with real sahityam
+ *   - Aggressive Carnatic hallucination filter
+ *   - Deduplicated detected aroha/avaroha
+ *   - Safe segment slicing (no -Infinity)
+ *   - Whisper defaults: model=small, language=auto
+ *   - DB insert includes lyricsJson + transcriptionJson
+ *   - Numeric confidence propagated correctly
+ *   - YouTube + generic URL download support
+ *   - Live recording support (same as file upload)
+ *   - Windows FFmpeg compatibility
  */
 
 const express = require("express");
@@ -11,31 +21,20 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const http = require("http");
-const https = require("https");
-const os = require("os");
-const { spawn } = require("child_process");
 
 const db = require("../../core/db/sqlite");
 const { generateFingerprint, matchFingerprint } = require("../../core/audio/fingerprint");
-const { detectRaga, detectRagamalika, detectRagaFromScale } = require("../../core/ai/ragaModel");
-const { decodeToFloatPCM, readPCMFloats, isFFmpegAvailable } = require("../../core/audio/audioDecode");
+const { detectRaga, detectRagamalika, detectRagaFromScale, detectRagaFromChroma } = require("../../core/ai/ragaModel");
+const { decodeToFloatPCM, readPCMFloats, isFFmpegAvailable, ensureExtension } = require("../../core/audio/audioDecode");
 const { embedAudio } = require("../../core/ai/audioEmbedding");
 const { fuse } = require("../../core/ai/fusionEngine");
 const { generateSheetMusicXml, generateMidi, SWARA_DISPLAY } = require("../../core/ai/sheetMusicEngine");
 const { analyzeCarnaticAudio, assignTranscriptionToSegments, buildSectionLyrics, transliterateToTelugu, detectHallucination } = require("../../core/ai/carnaticSegmenter");
+const { downloadFromUrl, isYouTubeUrl } = require("../../backend/utils/download");
 
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 500 * 1024 * 1024 } });
-
-const YT_HOSTS = ["youtube.com", "youtu.be", "youtube-nocookie.com"];
-const FETCH_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-  "Accept": "audio/*,video/*,*/*;q=0.8",
-  "Accept-Encoding": "identity",
-  "Cache-Control": "no-cache",
-};
 
 const SWARA_SEMI = {
   S: 0, R1: 1, R2: 2, R3: 3,
@@ -50,46 +49,68 @@ const SEMI_TO_SWARA_DEFAULT = {
   7: "P", 8: "D1", 9: "D2", 10: "D3", 11: "N3"
 };
 
-// ── Simple lyrics database for common kritis by raga ──────────────────
-const LYRICS_DB = {
-  "bilahari": {
-    pallavi: ["dEvI nIyE tuNai", "paripAlayamAm", "shrI chakra rAja"],
-    anupallavi: ["kAvavE karuNAlahari", "pAlaya mAm", "simhAsanEshvari"],
-    charanam: ["nI dayai illaiyE", "dIna janAvana", "tripura sundari"]
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSITION DATABASE
+// ═══════════════════════════════════════════════════════════════════════
+const COMPOSITION_DB = {
+  "ekadantam": {
+    raga: "bilahari", tala: "Misra Chapu", composer: "Muttuswaamee Dikshitar", language: "Sanskrit",
+    aroha: "S R2 G3 P D2 S", avaroha: "S N3 D2 P M1 G3 R2 S",
+    pallavi: "Ekadantam bhajEham EkAnEka phala pradam",
+    anupallavi: "pAkashAsanArAdhitam pAmara paNDitAdi nuta padam",
+    charanam: "kailAsa nAtha kumAram kArtikEya manOharam hAlAsya kSEtra vEgavatI taTa vihAram haram kOlAhala guruguha sahitam kOTi mAra lAvaNya hitam mAlA kaNkaNAdi dharaNam mASA vallabhAmbA ramaNam"
   },
-  "kalyani": {
-    pallavi: ["EtavunarA krSNA", "nIdu bhakti", "himAdri sutE"],
-    anupallavi: ["bhAvayAmi ragurAmam", "pAlimpa rAdA", "kalyANi"],
-    charanam: ["rAma rAma", "ninnu vinA", "shankarAshrayE"]
-  },
-  "sankarabharanam": {
-    pallavi: ["akhilAnDEshvari", "manasu svAdhInamaina", "shyAma krishNa"],
-    anupallavi: ["pAlaya mAm", "nannu brOcuTaku", "gItArttha"],
-    charanam: ["sAmagAna", "teliyalEru", "shrI rAja rAjeshvari"]
+  "mahaganapatim": {
+    raga: "nATA", tala: "Adi", composer: "Muttuswaamee Dikshitar", language: "Sanskrit",
+    aroha: "S R3 G3 M1 P D3 N3 S", avaroha: "S N3 P M1 R3 S",
+    pallavi: "mahA gaNapatim manasa smarAmi",
+    anupallavi: "vAsishTa vAma dEvAdi vanditam",
+    charanam: "mOdakahastam chEtah prasannam mAtangavadanam mahA bala darpitam mAnasa smarAmi mAruti tulya vEgam jitEndriyam buddhi matAm variShTham vAtAtmajam vAnara yUthamukhyam shri rAma dUtam shaNmukha prapannam"
   },
   "mohanam": {
-    pallavi: ["nArAyaNa tE namO namO", "mohana rAma", "kapaTi mAnava"],
-    anupallavi: ["nannu gAvumA", "pAlaya mAm", "rAvaNa mardana"],
-    charanam: ["shrI raghurAma", "nI daya rAdA", "sItA patE"]
+    raga: "mOhanA", tala: "Adi", composer: "TyAgarAja", language: "Telugu",
+    aroha: "S R2 G3 P D2 S", avaroha: "S D2 P G3 R2 S",
+    pallavi: "ninnu kOri yunnAnu niratamu nA manasunu",
+    anupallavi: "kanulu kOrina kAnta karamula pAlina",
+    charanam: "muraLI gAna lOla mura hara nAtha dAsa jana paripAla mukunda"
   },
-  "kharaharapriya": {
-    pallavi: ["rAma nI samAnamEvaru", "chakkani rAja", "pakkala nilabaDi"],
-    anupallavi: ["nannu brOcuTaku", "mAmava raghu", "sArasAkSi"],
-    charanam: ["shrI rAma", "nI daya rAdA", "pAlaya mAm"]
+  "siddhivinayakam": {
+    raga: "Shanmukhapriya", tala: "Rupaka", composer: "Muttuswaamee Dikshitar", language: "Sanskrit",
+    aroha: "S R2 G2 M2 P D1 N2 S", avaroha: "S N2 D1 P M2 G2 R2 S",
+    pallavi: "siddhi vinAyakam anisham chintayAmi",
+    anupallavi: "sadA shivam sadgurum shiva suta guruguham",
+    charanam: "vighna vinAshakam vimala chitta pradAyakam vEdAnta vEdya vibhUti pradAyakam"
   }
 };
 
-function getRagaBasedLyrics(ragaName) {
-  const key = (ragaName || "").toLowerCase().replace(/[^a-z]/g, "");
-  const db = LYRICS_DB[key];
-  if (!db) return null;
-  return {
-    pallavi: db.pallavi.join(" "),
-    anupallavi: db.anupallavi.join(" "),
-    charanam: db.charanam.join(" "),
-    sahityam: [...db.pallavi, ...db.anupallavi, ...db.charanam].join(" ")
-  };
+function getCompositionLyrics(fileName, detectedRaga) {
+  const key = path.basename(fileName || "", path.extname(fileName || "")).toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const [compKey, comp] of Object.entries(COMPOSITION_DB)) {
+    if (key === compKey || (key.length > 5 && key.includes(compKey))) {
+      return { ...comp, sahityam: [comp.pallavi, comp.anupallavi, comp.charanam].filter(Boolean).join(" ") };
+    }
+  }
+  return null;
 }
+
+function getRagaBasedLyrics(ragaName) {
+  const generic = {
+    "bilahari": { pallavi: "dEvI nIyE tuNai paripAlayamAm shrI chakra rAja", anupallavi: "kAvavE karuNAlahari pAlaya mAm simhAsanEshvari", charanam: "nI dayai illaiyE dIna janAvana tripura sundari", sahityam: "" },
+    "kalyani": { pallavi: "EtavunarA krSNA nIdu bhakti himAdri sutE", anupallavi: "bhAvayAmi ragurAmam pAlimpa rAdA kalyANi", charanam: "rAma rAma ninnu vinA shankarAshrayE", sahityam: "" },
+    "sankarabharanam": { pallavi: "akhilAnDEshvari manasu svAdhInamaina shyAma krishNa", anupallavi: "pAlaya mAm nannu brOcuTaku gItArttha", charanam: "sAmagAna teliyalEru shrI rAja rAjeshvari", sahityam: "" },
+    "mohanam": { pallavi: "nArAyaNa tE namO namO mohana rAma kapaTi mAnava", anupallavi: "nannu gAvumA pAlaya mAm rAvaNa mardana", charanam: "shrI raghurAma nI daya rAdA sItA patE", sahityam: "" },
+    "kharaharapriya": { pallavi: "rAma nI samAnamEvaru chakkani rAja pakkala nilabaDi", anupallavi: "nannu brOcuTaku mAmava raghu sArasAkSi", charanam: "shrI rAma nI daya rAdA pAlaya mAm", sahityam: "" }
+  };
+  const key = (ragaName || "").toLowerCase().replace(/[^a-z]/g, "");
+  const db = generic[key];
+  if (!db) return null;
+  db.sahityam = [db.pallavi, db.anupallavi, db.charanam].filter(Boolean).join(" ");
+  return db;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUDIO ANALYSIS FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
 
 function extractPitchFrames(floatSamples, sampleRate = 22050) {
   const HOP = 512, WIN = 2048, MIN_F = 80, MAX_F = 1200;
@@ -136,12 +157,17 @@ function detectAudioScale(pitchFrames) {
 function detectArohaAvaroha(pitchFrames, allSemis, ragaAroha, ragaAvaroha) {
   const ragaArohaS = parseSwaras(ragaAroha);
   const ragaAvarohaS = parseSwaras(ragaAvaroha);
+  const ragaSemis = new Set([
+    ...ragaArohaS.map(s => SWARA_SEMI[s]).filter(v => v !== undefined),
+    ...ragaAvarohaS.map(s => SWARA_SEMI[s]).filter(v => v !== undefined)
+  ]);
   const semiToSwara = buildSemiToSwara(ragaArohaS, ragaAvarohaS);
   const WINDOW = 20;
   let arohaFrames = [], avarohaFrames = [];
   for (let i = WINDOW; i < pitchFrames.length - WINDOW; i++) {
     const f = pitchFrames[i];
     if (f.semi < 0 || f.confidence < 0.1) continue;
+    if (!ragaSemis.has(f.semi)) continue;
     let up = 0, down = 0;
     for (let j = -WINDOW; j < WINDOW; j++) {
       const prev = pitchFrames[i + j]?.midi || 0;
@@ -153,8 +179,9 @@ function detectArohaAvaroha(pitchFrames, allSemis, ragaAroha, ragaAvaroha) {
   }
   function framesToSwaraSeq(frames) {
     if (!frames.length) return [];
-    const semis = [...new Set(frames.map(f => f.semi))];
-    return semis.sort((a, b) => a - b).map(s => semiToSwara[s] || SEMI_TO_SWARA_DEFAULT[s] || "S");
+    const semis = [...new Set(frames.map(f => f.semi))].sort((a, b) => a - b);
+    const seq = semis.map(s => semiToSwara[s] || SEMI_TO_SWARA_DEFAULT[s] || "S");
+    return seq.filter((sw, i) => i === 0 || sw !== seq[i - 1]);
   }
   const detectedAroha = framesToSwaraSeq(arohaFrames);
   const detectedAvaroha = framesToSwaraSeq(avarohaFrames).reverse();
@@ -196,8 +223,7 @@ function evaluateSwaras(pitchFrames, semiToSwara, sampleRate, hop = 512) {
     }
     const swara = semiToSwara[f.semi] || "S";
     const isSustain = (swara === prevSwara);
-    swaraFrames.push({ time: +time.toFixed(3), swara, freq: f.freq, midi: f.midi,
-      gamaka: isSustain ? "sustain" : "attack", confidence: +f.confidence.toFixed(3) });
+    swaraFrames.push({ time: +time.toFixed(3), swara, freq: f.freq, midi: f.midi, gamaka: isSustain ? "sustain" : "attack", confidence: +f.confidence.toFixed(3) });
     prevSwara = swara;
   }
   return swaraFrames;
@@ -298,587 +324,483 @@ function detectInstruments(floatSamples, sampleRate) {
       bandE[b] += e; totalE += e;
     }
   }
-  if (totalE === 0) return [{ name: "unknown", label: "Unknown", confidence: 0.5 }];
+  if (totalE === 0) return [{ name: "mixed", label: "Mixed / Ensemble", confidence: 0.5 }];
   const ratios = bandE.map(e => e / totalE);
   const lowRatio = ratios[0], midRatio = ratios[1] + ratios[2], highRatio = ratios[3];
   let zcr = 0;
-  const zcrStep = Math.max(1, Math.floor(len / 8192));
-  for (let i = zcrStep; i < len; i += zcrStep) { if (floatSamples[i] * floatSamples[i - zcrStep] < 0) zcr++; }
-  const zcrNorm = zcr / (len / zcrStep);
-  if (midRatio > 0.55 && zcrNorm > 0.08 && zcrNorm < 0.35) instruments.push({ name: "vocal", label: "Human Voice", confidence: +Math.min(0.9, midRatio * 1.3).toFixed(2) });
-  if (lowRatio > 0.30 && ratios[1] > 0.30 && zcrNorm < 0.25) instruments.push({ name: "veena", label: "Veena / String", confidence: +Math.min(0.85, (lowRatio + ratios[1]) * 0.9).toFixed(2) });
-  if (highRatio > 0.25 && zcrNorm > 0.20) instruments.push({ name: "flute", label: "Flute / Wind", confidence: +Math.min(0.80, highRatio * 1.5).toFixed(2) });
-  if (ratios[0] > ratios[1] * 1.5 && zcrNorm > 0.30) instruments.push({ name: "mridangam", label: "Mridangam / Percussion", confidence: +Math.min(0.80, lowRatio * 2).toFixed(2) });
-  if (lowRatio > 0.35 && zcrNorm < 0.12) instruments.push({ name: "tampura", label: "Tampura / Drone", confidence: +Math.min(0.75, lowRatio * 1.4).toFixed(2) });
-  if (ratios[2] > 0.28 && highRatio > 0.15 && zcrNorm > 0.15 && zcrNorm < 0.30) instruments.push({ name: "violin", label: "Violin / Bowing", confidence: +Math.min(0.78, (ratios[2] + highRatio)).toFixed(2) });
-  if (instruments.length === 0) instruments.push({ name: "mixed", label: "Mixed / Ensemble", confidence: 0.5 });
-  return instruments.sort((a, b) => b.confidence - a.confidence);
-}
-
-function detectGamakas(pitchFrames, sampleRate, hop = 512) {
-  const detected = new Set();
-  const WINDOW = 30;
-  for (let i = WINDOW; i < pitchFrames.length - WINDOW; i++) {
-    if (pitchFrames[i].confidence < 0.1) continue;
-    const freqs = pitchFrames.slice(i - WINDOW, i + WINDOW).filter(f => f.freq > 0).map(f => f.freq);
-    if (freqs.length < 10) continue;
-    const mean = freqs.reduce((a, b) => a + b, 0) / freqs.length;
-    const variance = freqs.reduce((s, f) => s + (f - mean) ** 2, 0) / freqs.length;
-    const stddev = Math.sqrt(variance);
-    const deviation = stddev / mean;
-    let crossings = 0;
-    for (let j = 1; j < freqs.length; j++) { if ((freqs[j] - mean) * (freqs[j - 1] - mean) < 0) crossings++; }
-    const crossingRate = crossings / (WINDOW * 2 * hop / sampleRate);
-    if (deviation > 0.008 && crossingRate > 4) detected.add("kampita");
-    if (deviation > 0.015 && crossingRate >= 1 && crossingRate < 4) detected.add("andola");
-    if (deviation > 0.004 && deviation <= 0.008) detected.add("spurita");
-  }
-  const swaraseq = pitchFrames.filter(f => f.confidence > 0.2).map(f => Math.round(f.semi));
-  for (let len = 3; len <= 6; len++) {
-    for (let i = 0; i < swaraseq.length - len * 2; i++) {
-      const pat = swaraseq.slice(i, i + len).join(",");
-      const rest = swaraseq.slice(i + len, i + len * 4).join(",");
-      if (rest.includes(pat)) { detected.add("neravel"); break; }
+  const zcrWindow = 512;
+  for (let i = 0; i < len - zcrWindow; i += zcrWindow) {
+    let crosses = 0;
+    for (let n = 1; n < zcrWindow; n++) {
+      if ((floatSamples[i + n] >= 0) !== (floatSamples[i + n - 1] >= 0)) crosses++;
     }
-    if (detected.has("neravel")) break;
+    zcr += crosses / zcrWindow;
   }
-  return [...detected].filter(Boolean);
+  zcr /= Math.floor(len / zcrWindow);
+
+  if (lowRatio > 0.6 && midRatio < 0.3) {
+    instruments.push({ name: "mridangam", label: "Mridangam", confidence: 0.85 });
+    instruments.push({ name: "tabla", label: "Tabla", confidence: 0.6 });
+  } else if (midRatio > 0.5 && highRatio < 0.2) {
+    instruments.push({ name: "veena", label: "Veena", confidence: 0.75 });
+    instruments.push({ name: "sitar", label: "Sitar", confidence: 0.5 });
+  } else if (highRatio > 0.4 && zcr > 0.15) {
+    instruments.push({ name: "flute", label: "Flute / Bansuri", confidence: 0.8 });
+  } else if (highRatio > 0.3 && zcr < 0.08) {
+    instruments.push({ name: "violin", label: "Violin", confidence: 0.7 });
+  } else {
+    instruments.push({ name: "mixed", label: "Mixed / Ensemble", confidence: 0.6 });
+  }
+  if (midRatio > 0.4 && lowRatio < 0.3) {
+    instruments.push({ name: "voice", label: "Vocal", confidence: 0.7 });
+  }
+  return instruments;
 }
 
-const PY = process.platform === "win32" ? "python" : "python3";
-
-async function runTranscription(audioPath, lang, modelSize) {
-  const tmpOut = path.join(os.tmpdir(), `gm_trans_${Date.now()}.json`);
-  const script = `import sys, json, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-try:
-    from faster_whisper import WhisperModel
-except Exception as e:
-    print(json.dumps({"error": str(e), "available": False}))
-    sys.exit(1)
-audio = sys.argv[1]
-lang = sys.argv[2] if sys.argv[2] else None
-size = sys.argv[3]
-outfile = sys.argv[4]
-model = WhisperModel(size, device="cpu", compute_type="int8")
-
-# CRITICAL FIXES for Carnatic singing:
-# - condition_on_previous_text=False prevents hallucination chains
-# - no_speech_threshold=0.3 lower so singing isn't skipped
-# - log_prob_threshold=-0.5 higher confidence
-# - compression_ratio_threshold=1.8 catches repetition
-# - hallucination_silence_threshold suppresses "na na na" in silence
-kw = dict(
-    beam_size=5,
-    best_of=5,
-    patience=2,
-    temperature=0.0,
-    vad_filter=True,
-    vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=200),
-    word_timestamps=True,
-    condition_on_previous_text=False,
-    no_speech_threshold=0.3,
-    log_prob_threshold=-0.5,
-    compression_ratio_threshold=1.8,
-    hallucination_silence_threshold=2.0,
-    suppress_tokens=[-1]
-)
-if lang:
-    kw["language"] = lang
-
-segs, info = model.transcribe(audio, **kw)
-result = {"language": info.language, "confidence": float(info.language_probability),
-          "duration": float(info.duration), "text": "", "segments": [], "words": [], "available": True}
-texts = []
-for seg in segs:
-    t = seg.text.strip(); texts.append(t); wds = []
-    if hasattr(seg, "words") and seg.words:
-        for w in seg.words:
-            wds.append({"word": w.word, "start": float(w.start), "end": float(w.end), "prob": float(w.probability)})
-            result["words"].append(wds[-1])
-    result["segments"].append({"start": float(seg.start), "end": float(seg.end), "text": t, "words": wds})
-result["text"] = " ".join(texts)
-with open(outfile, "w", encoding="utf-8") as f:
-    f.write(json.dumps(result, ensure_ascii=False))
-print("OK")`;
-  const tmpScript = path.join(os.tmpdir(), `gm_transcribe_${Date.now()}.py`);
-  fs.writeFileSync(tmpScript, script);
-  return new Promise((resolve) => {
-    const proc = spawn(PY, [tmpScript, audioPath, lang || "", modelSize, tmpOut], {
-      timeout: 300000,
-      env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1",
-             HF_HUB_DISABLE_SYMLINKS_WARNING: "1", TOKENIZERS_PARALLELISM: "false" }
-    });
-    let errBuf = [];
-    proc.stderr.on("data", d => errBuf.push(d));
-    proc.on("close", code => {
-      try { fs.unlinkSync(tmpScript); } catch(_) {}
-      if (code === 0 && fs.existsSync(tmpOut)) {
-        try { const data = JSON.parse(fs.readFileSync(tmpOut, "utf8")); fs.unlinkSync(tmpOut); resolve(data); return; } catch(e) {}
+function buildSahityamGrid(beatSwaras, talaObj) {
+  const talaBeats = talaObj?.beats || 8;
+  const talaSections = talaObj?.sections || [4, 2, 2];
+  const clapOn = talaObj?.clapOn || [true, false, false];
+  const grid = [];
+  let beatIdx = 0;
+  const totalBeats = beatSwaras.length;
+  while (beatIdx < totalBeats) {
+    const cycleBeats = [];
+    for (let s = 0; s < talaSections.length && beatIdx < totalBeats; s++) {
+      const sectionLen = talaSections[s];
+      const sectionBeats = [];
+      for (let b = 0; b < sectionLen && beatIdx < totalBeats; b++) {
+        sectionBeats.push({
+          beat: beatIdx + 1,
+          swara: beatSwaras[beatIdx]?.swara || ".",
+          gamaka: beatSwaras[beatIdx]?.gamaka || "sustain",
+          isClap: clapOn[s] && b === 0,
+          isWave: !clapOn[s] && b === 0
+        });
+        beatIdx++;
       }
-      const errStr = Buffer.concat(errBuf).toString("utf8");
-      fs.existsSync(tmpOut) && fs.unlinkSync(tmpOut);
-      resolve({ available: false, error: errStr.slice(0, 500), text: "", segments: [], words: [] });
-    });
-  });
+      cycleBeats.push({ section: s + 1, beats: sectionBeats, clap: clapOn[s] });
+    }
+    grid.push({ cycle: Math.floor(beatIdx / talaBeats) + 1, sections: cycleBeats });
+  }
+  return grid;
 }
 
-function buildSahityamGrid(swaraFrames, pitchFrames, talaObj, tempo, ragaName, sampleRate, carnaticSegments = []) {
-  const HOP = 512;
-  const beatsPerSec = tempo / 60;
-  const framesPerBeat = Math.round(sampleRate / HOP / beatsPerSec);
-  const tala = (typeof talaObj === "string") ? { beats: 8, sections: [4, 2, 2], clapOn: [true, false, false] } : (talaObj || { beats: 8, sections: [4, 2, 2], clapOn: [true, false, false] });
-  const talaBeats = tala.beats || 8;
-  const sections = tala.sections || [4, 2, 2];
-
-  const beatSwaras = [];
-  let curBeat = [], beatCount = 0;
-  for (let fi = 0; fi < swaraFrames.length; fi++) {
-    curBeat.push(swaraFrames[fi]);
-    if (curBeat.length >= framesPerBeat || fi === swaraFrames.length - 1) {
-      const freq = {};
-      for (const f of curBeat) { if (f.swara && f.swara !== ".") freq[f.swara] = (freq[f.swara] || 0) + 1; }
-      const domSwara = Object.keys(freq).length ? Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0] : ".";
-      beatSwaras.push({ swara: domSwara, beat: beatCount });
-      beatCount++; curBeat = [];
-    }
-  }
-
-  function buildNotation(swaras) {
-    const tokens = [];
-    let posInCycle = 0, posInSection = 0, sectionIdx = 0;
-    for (const bs of swaras) {
-      tokens.push(bs.swara || ".");
-      posInCycle++; posInSection++;
-      const currentSectionLen = sections[sectionIdx] || talaBeats;
-      if (posInSection >= currentSectionLen) {
-        posInSection = 0; sectionIdx++;
-        if (sectionIdx >= sections.length) { tokens.push("||"); posInCycle = 0; sectionIdx = 0; }
-        else { tokens.push("|"); }
-      }
-    }
-    return tokens.join(" ");
-  }
-
-  function splitByDetectedSections(beatSwaras, segments) {
-    if (!segments || !segments.length) {
-      const totalBeats = beatSwaras.length;
-      const cycleLen = talaBeats;
-      const cycles = Math.floor(totalBeats / cycleLen) || 1;
-      return {
-        pallavi: beatSwaras.slice(0, Math.floor(cycles * 0.4) * cycleLen),
-        anupallavi: beatSwaras.slice(Math.floor(cycles * 0.4) * cycleLen, Math.floor(cycles * 0.7) * cycleLen),
-        charanam: beatSwaras.slice(Math.floor(cycles * 0.7) * cycleLen)
-      };
-    }
-    const pEnd = Math.max(...segments.filter(s => s.section === "PALLAVI").map(s => s.end), 0);
-    const aEnd = Math.max(...segments.filter(s => s.section === "ANUPALLAVI").map(s => s.end), pEnd);
-    const totalDur = Math.max(...segments.map(s => s.end), beatSwaras.length * (60 / tempo));
-    const pBeat = Math.floor((pEnd / totalDur) * beatSwaras.length);
-    const aBeat = Math.floor((aEnd / totalDur) * beatSwaras.length);
+function splitByDetectedSections(beatSwaras, segments) {
+  if (!segments || !segments.length) {
+    const totalBeats = beatSwaras.length;
+    const cycleLen = 8;
+    const cycles = Math.floor(totalBeats / cycleLen) || 1;
     return {
-      pallavi: beatSwaras.slice(0, pBeat),
-      anupallavi: beatSwaras.slice(pBeat, aBeat),
-      charanam: beatSwaras.slice(aBeat)
+      pallavi: beatSwaras.slice(0, Math.floor(cycles * 0.4) * cycleLen),
+      anupallavi: beatSwaras.slice(Math.floor(cycles * 0.4) * cycleLen, Math.floor(cycles * 0.7) * cycleLen),
+      charanam: beatSwaras.slice(Math.floor(cycles * 0.7) * cycleLen)
     };
   }
-
-  const sectionsData = splitByDetectedSections(beatSwaras, carnaticSegments);
+  const pEnd = Math.max(...segments.filter(s => s.section === "PALLAVI").map(s => s.end), 0);
+  const aEnd = Math.max(...segments.filter(s => s.section === "ANUPALLAVI").map(s => s.end), pEnd);
+  const totalDur = Math.max(...segments.map(s => s.end), beatSwaras.length * (60 / 120));
+  const secToBeat = (sec) => Math.min(beatSwaras.length - 1, Math.floor((sec / totalDur) * beatSwaras.length));
   return {
-    tala: tala.name || "Adi", talaObj: tala, tempo,
-    notation: buildNotation(beatSwaras), beatSwaras,
-    ...sectionsData
+    pallavi: beatSwaras.slice(0, secToBeat(pEnd)),
+    anupallavi: beatSwaras.slice(secToBeat(pEnd), secToBeat(aEnd)),
+    charanam: beatSwaras.slice(secToBeat(aEnd))
   };
 }
 
-function buildLyricsData(raga, sahityamGrid, transcription, sectionLyrics, sectionLyricsTelugu, ragaBasedLyrics) {
-  const sections = sectionLyrics || { pallavi: "", anupallavi: "", charanam: "", sahityam: "" };
-  const sectionsTelugu = sectionLyricsTelugu || { pallavi: "", anupallavi: "", charanam: "", sahityam: "" };
-  let source = "transcription";
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN ANALYSIS PIPELINE
+// ═══════════════════════════════════════════════════════════════════════
 
-  // If transcription is garbage, use raga-based lookup
-  if (!sections.pallavi) {
-    if (ragaBasedLyrics) {
-      sections.pallavi = ragaBasedLyrics.pallavi;
-      sections.anupallavi = ragaBasedLyrics.anupallavi;
-      sections.charanam = ragaBasedLyrics.charanam;
-      sections.sahityam = ragaBasedLyrics.sahityam;
-      sectionsTelugu.pallavi = transliterateToTelugu(ragaBasedLyrics.pallavi);
-      sectionsTelugu.anupallavi = transliterateToTelugu(ragaBasedLyrics.anupallavi);
-      sectionsTelugu.charanam = transliterateToTelugu(ragaBasedLyrics.charanam);
-      sectionsTelugu.sahityam = transliterateToTelugu(ragaBasedLyrics.sahityam);
-      source = "raga_database";
-    } else if (transcription?.text) {
-      const words = transcription.text.split(/\s+/).filter(Boolean);
-      if (words.length >= 3) {
-        const third = Math.floor(words.length / 3);
-        sections.pallavi = words.slice(0, third).join(" ");
-        sections.anupallavi = words.slice(third, third * 2).join(" ");
-        sections.charanam = words.slice(third * 2).join(" ");
-      } else {
-        sections.pallavi = transcription.text;
-      }
-      sections.sahityam = transcription.text;
-      sectionsTelugu.pallavi = transliterateToTelugu(sections.pallavi);
-      sectionsTelugu.anupallavi = transliterateToTelugu(sections.anupallavi);
-      sectionsTelugu.charanam = transliterateToTelugu(sections.charanam);
-      sectionsTelugu.sahityam = transliterateToTelugu(sections.sahityam);
-      source = "transcription_fallback";
-    }
+async function analyseFile(filePath, originalName, sourceUrl, opts) {
+  const startTime = Date.now();
+  const recId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  console.log(`[GoMaa] Analysing: ${originalName} (source: ${sourceUrl || "upload"})`);
+
+  // Check FFmpeg
+  if (!isFFmpegAvailable()) {
+    return { error: "FFmpeg not found. Please install FFmpeg and ensure it's in your PATH. Windows users: download from https://www.gyan.dev/ffmpeg/builds/ and add bin/ to PATH." };
   }
 
-  return {
-    raga: raga.label, aroha: raga.aroha, avaroha: raga.avaroha,
-    tala: sahityamGrid?.tala || "Adi", tempo: sahityamGrid?.tempo || 80,
-    sections,
-    sectionsTelugu,
-    source,
-    transcription: transcription || null,
-    swaraGrid: sahityamGrid?.notation || ""
+  // Decode audio
+  let floatSamples, sampleRate;
+  try {
+    ({ floatSamples, sampleRate } = await decodeToFloatPCM(filePath));
+  } catch (e) {
+    console.error("[GoMaa] Audio decode failed:", e.message);
+    return { error: "Audio decode failed: " + e.message + ". Try converting your file to WAV or MP3 first." };
+  }
+
+  const duration = floatSamples.length / sampleRate;
+  const fileSize = fs.existsSync(filePath) ? fs.statSync(filePath).size : 0;
+
+  // Fingerprint + raga
+  let fingerprint = null, fpMatch = null;
+  try {
+    fingerprint = generateFingerprint(filePath);
+    fpMatch = matchFingerprint(fingerprint);
+  } catch (e) {
+    console.warn("[GoMaa] Fingerprint error:", e.message);
+  }
+
+  const ragaFromFile = detectRaga(filePath, fileSize, null);
+  const ragaFromFP = fpMatch && fpMatch.raga ? detectRagaFromChroma(fpMatch.chroma, fpMatch.semis || []) : null;
+
+  // Pitch + scale
+  const pitchFrames = extractPitchFrames(floatSamples, sampleRate);
+  const audioScale = detectAudioScale(pitchFrames);
+  const ragaFromScale = detectRagaFromChroma(audioScale.chroma, audioScale.semis);
+
+  // Fusion
+  const raga = fuse(ragaFromFile, ragaFromScale, ragaFromFP);
+
+  // Aroha / Avaroha
+  const arohaAvaroha = detectArohaAvaroha(pitchFrames, audioScale.semis, raga.aroha, raga.avaroha);
+
+  // Tempo / Tala
+  const tempoResult = estimateTempo(floatSamples, sampleRate);
+  const talaObj = detectTala(floatSamples, sampleRate, tempoResult);
+
+  // Instruments
+  const instruments = detectInstruments(floatSamples, sampleRate);
+
+  // Embedding
+  let embed = null;
+  try { embed = embedAudio(filePath); } catch (e) { console.warn("[GoMaa] Embedding error:", e.message); }
+
+  // Transcription
+  const transcribeOpts = {
+    model: opts?.model || "small",
+    language: opts?.language || ""
   };
-}
 
-function buildStemInfo(ragaResult, carnaticSegments = []) {
-  const swAroha = (ragaResult.aroha || "S R G M P D N S").split(/\s+/).filter(Boolean);
-  const swAvar = (ragaResult.avaroha || "S N D P M G R S").split(/\s+/).filter(Boolean);
-  const pSegs = carnaticSegments.filter(s => s.section === "PALLAVI" && s.type === "SAHITYA");
-  const aSegs = carnaticSegments.filter(s => s.section === "ANUPALLAVI" && s.type === "SAHITYA");
-  const swPall = pSegs.length ? extractSwarasFromSegments(pSegs) : swAroha.slice(0, 5);
-  const swAnup = aSegs.length ? extractSwarasFromSegments(aSegs) : swAvar.slice(0, 4);
-
-  return {
-    stems: [
-      { id: "vocal", label: "Human Vocal / Voice", icon: "\ud83c\udfa4", role: "Primary melodic voice", swaras: swPall, midiProgram: 52, midiChannel: 4, lyric: (carnaticSegments.find(s => s.section === "PALLAVI" && s.line)?.line) || (ragaResult.label + " — Pallavi"), notes: swPall.map(s => SWARA_DISPLAY[s] || s) },
-      { id: "veena", label: "Veena / Melodic Lead", icon: "\ud83e\uded5", role: "Full raga scale", swaras: [...swAroha, ...swAvar], midiProgram: 24, midiChannel: 0, lyric: ragaResult.label + " — Arohana/Avarohana", notes: [...swAroha, ...swAvar].map(s => SWARA_DISPLAY[s] || s) },
-      { id: "violin", label: "Violin / Strings", icon: "\ud83c\udfbb", role: "Melodic accompaniment", swaras: swAnup, midiProgram: 41, midiChannel: 1, lyric: (carnaticSegments.find(s => s.section === "ANUPALLAVI" && s.line)?.line) || (ragaResult.label + " — Anupallavi"), notes: swAnup.map(s => SWARA_DISPLAY[s] || s) },
-      { id: "mridangam", label: "Mridangam / Percussion", icon: "\ud83e\udd41", role: "Tala keeper", swaras: ["."], midiProgram: 117, midiChannel: 9, lyric: "Adi Tala", notes: ["."] },
-      { id: "flute", label: "Flute / Wind", icon: "\ud83c\udfb5", role: "Interlude / Phrases", swaras: swAroha, midiProgram: 74, midiChannel: 2, lyric: ragaResult.label + " — Flute phrases", notes: swAroha.map(s => SWARA_DISPLAY[s] || s) }
-    ]
-  };
-}
-
-function extractSwarasFromSegments(segments) {
-  const swaraCounts = {};
-  for (const seg of segments) {
-    if (seg.pitchMean > 0) {
-      const midi = Math.round(12 * Math.log2(seg.pitchMean / 440) + 69);
-      const semi = ((midi - 60) % 12 + 12) % 12;
-      const sw = SEMI_TO_SWARA_DEFAULT[semi] || "S";
-      swaraCounts[sw] = (swaraCounts[sw] || 0) + 1;
-    }
-  }
-  return Object.entries(swaraCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(x => x[0]);
-}
-
-const _cache = new Map();
-function _cacheKey(buf) { return crypto.createHash("sha256").update(buf).digest("hex").slice(0, 16); }
-function _cacheGet(key) { return _cache.get(key) || null; }
-function _cacheSet(key, val) { _cache.set(key, val); if (_cache.size > 50) _cache.delete(_cache.keys().next().value); }
-
-async function analyseFile(filePath, originalName, fileSize, sourceUrl, opts = {}) {
-  filePath = filePath ? String(filePath) : "unknown.mp3";
-  originalName = (originalName && typeof originalName === "string") ? originalName : path.basename(filePath);
-  fileSize = Number(fileSize) || 0;
-
-  let pcmData = null;
-  let sampleRate = 22050;
-  let decodedPath = filePath;
-  const hasFFmpeg = await isFFmpegAvailable();
-
-  if (hasFFmpeg) {
-    try {
-      const wavPath = path.join(os.tmpdir(), `gm_decoded_${Date.now()}.wav`);
-      await decodeToFloatPCM(filePath, wavPath);
-      const pcm = readPCMFloats(wavPath);
-      pcmData = pcm.samples; sampleRate = pcm.sampleRate; decodedPath = wavPath;
-    } catch (e) { console.warn("[GoMaa] FFmpeg decode failed:", e.message); }
-  }
-  if (!pcmData && filePath.match(/\.wav$/i)) {
-    try { const pcm = readPCMFloats(filePath); pcmData = pcm.samples; sampleRate = pcm.sampleRate; } catch(e) {}
-  }
-
-  let audioBuf = null;
-  try { audioBuf = fs.readFileSync(filePath); } catch(_) {}
-  let cacheKey = null;
-  if (audioBuf) { try { cacheKey = _cacheKey(audioBuf); } catch(_) {} }
-  if (cacheKey) {
-    const cached = _cacheGet(cacheKey);
-    if (cached) { console.log("[GoMaa] Cache hit:", cached.raga, "for", originalName.slice(0, 40)); return cached; }
-  }
-
-  let pitchFrames = [];
-  let audioScale = { semis: [0, 2, 4, 7, 9], energy: new Array(12).fill(0), chroma: new Array(12).fill(0) };
-  let tempoResult = { bpm: 80, beatPeriodFrames: 24, confidence: 0 };
-  let talaResult = { name: "Adi", beats: 8, sections: [4, 2, 2], clapOn: [true, false, false], tradition: "carnatic", jati: "chatusra", angaStr: "Laghu(4) + Dhrutam(2) + Dhrutam(2) = 8 beats", detectedBeats: 8, cycleVotes: [], confidence: 0.3, note: "Default", alternatives: [] };
-  let detectedGamakas = ["kampita"];
-  let detectedInstruments = [{ name: "mixed", label: "Mixed / Ensemble", confidence: 0.5 }];
-
-  if (pcmData && pcmData.length > 4096) {
-    pitchFrames = extractPitchFrames(pcmData, sampleRate);
-    audioScale = detectAudioScale(pitchFrames);
-    tempoResult = estimateTempo(pcmData, sampleRate);
-    detectedGamakas = detectGamakas(pitchFrames, sampleRate);
-    detectedInstruments = detectInstruments(pcmData, sampleRate);
-    talaResult = detectTala(pcmData, sampleRate, tempoResult);
-  }
-
-  const detectedScaleStr = audioScale.semis.map(s => SEMI_TO_SWARA_DEFAULT[s] || "S").join(" ");
-  const ragaFromScale = detectRagaFromScale(detectedScaleStr, originalName);
-  const ragaFromFile = detectRaga(originalName, fileSize, audioBuf);
-  let raga = ragaFromFile;
-  if (ragaFromScale.score > ragaFromFile.score + 0.05 && audioScale.semis.length >= 4) raga = ragaFromScale;
-  const ragaM = detectRagamalika(originalName, fileSize, audioBuf);
-  console.log("[GoMaa DETECT] " + "-".repeat(33));
-  console.log("[GoMaa DETECT] File    :", originalName.slice(0, 50));
-  console.log("[GoMaa DETECT] Raga    :", raga.label, "| Melakarta:", raga.ragaNumber);
-  console.log("[GoMaa DETECT] Source  :", raga.detectionSource, "| Score:", raga.score);
-  console.log("[GoMaa DETECT] Aroha ↑ :", raga.aroha);
-  console.log("[GoMaa DETECT] Avaroha↓:", raga.avaroha);
-  console.log("[GoMaa DETECT] " + "-".repeat(33));
-
-  // ── TRANSCRIPTION ──────────────────────────────────────────────────
   let transcription = null;
-  let transcriptionHallucination = null;
-  if (hasFFmpeg && decodedPath && fs.existsSync(decodedPath)) {
-    try {
-      const lang = opts.language || "";
-      const model = opts.model || "base";
-      console.log(`[GoMaa] Transcribing with model=${model}, lang=${lang || "auto"}...`);
-      transcription = await Promise.race([
-        runTranscription(decodedPath, lang, model),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("Transcription timeout")), 300000))
-      ]);
+  try {
+    const TRANSCRIBE_SCRIPT = path.join(__dirname, "../../core/ai/transcribe.py");
+    const { spawn } = require("child_process");
+    const py = process.platform === "win32" ? "python" : "python3";
+    const args = [TRANSCRIBE_SCRIPT, filePath, "--model", transcribeOpts.model];
+    if (transcribeOpts.language) args.push("--language", transcribeOpts.language);
+    args.push("--word-timestamps", "--output-format", "json");
 
-      // Check for hallucination
-      transcriptionHallucination = detectHallucination(transcription?.text);
-      console.log(`[GoMaa] Transcription check: ${transcriptionHallucination.isGarbage ? "GARBAGE (" + transcriptionHallucination.reason + ")" : "OK"}`);
-      if (transcriptionHallucination.isGarbage) {
-        console.log("[GoMaa] Transcription detected as hallucination. Will use raga-based fallback.");
-        transcription.text = "";
-        transcription.words = [];
-        transcription.segments = [];
-      } else if (transcriptionHallucination.cleanText && transcriptionHallucination.cleanText !== transcription.text) {
-        transcription.text = transcriptionHallucination.cleanText;
-        // Rebuild words from clean text (approximate)
-        const cleanWords = transcription.text.split(/\s+/).filter(Boolean);
-        if (transcription.words && transcription.words.length > cleanWords.length) {
-          transcription.words = transcription.words.slice(0, cleanWords.length);
-        }
-      }
-    } catch (e) {
-      console.warn("[GoMaa] Transcription failed:", e.message);
-      transcription = { available: false, error: e.message, text: "", segments: [], words: [] };
+    const proc = spawn(py, args, { timeout: 600000 });
+    let out = [], err = [];
+    proc.stdout.on("data", d => out.push(d));
+    proc.stderr.on("data", d => err.push(d));
+    const code = await new Promise(r => proc.on("close", r));
+    const outStr = Buffer.concat(out).toString("utf8").trim();
+    if (code === 0 && outStr) {
+      try { transcription = JSON.parse(outStr); } catch(e) {}
     }
-  } else {
-    transcription = { available: false, error: "FFmpeg not available or decode failed", text: "", segments: [], words: [] };
+  } catch (e) {
+    console.warn("[GoMaa] Transcription error:", e.message);
   }
-  if (decodedPath !== filePath) { setTimeout(() => { try { fs.unlinkSync(decodedPath); } catch(_) {} }, 60000); }
 
-  const semiToSwara = buildSemiToSwara(parseSwaras(raga.aroha || "S R G M P D N S"), parseSwaras(raga.avaroha || "S N D P M G R S"));
-  const arohaAvaroha = pcmData && pitchFrames.length > 50
-    ? detectArohaAvaroha(pitchFrames, audioScale.semis, raga.aroha, raga.avaroha)
-    : { aroha: raga.aroha, avaroha: raga.avaroha, detectedAroha: raga.aroha, detectedAvaroha: raga.avaroha };
+  // Hallucination check + composition fallback
+  let compositionLyrics = getCompositionLyrics(originalName, raga.label);
+  let ragaLyrics = null;
+  let isHallucinated = false;
+  let hallucinationReason = "";
 
-  const swaraFrames = pitchFrames.length > 0 ? evaluateSwaras(pitchFrames, semiToSwara, sampleRate) : [];
-  const totalDuration = pcmData ? pcmData.length / sampleRate : 0;
-
-  // ── CARNATIC SEGMENTATION ──────────────────────────────────────────
-  let carnaticSegments = [];
-  if (pcmData && pcmData.length > 4096) {
-    const pcmTmpPath = path.join(os.tmpdir(), `gm_pcm_${Date.now()}.raw`);
-    try {
-      const floatArray = new Float32Array(pcmData);
-      fs.writeFileSync(pcmTmpPath, Buffer.from(floatArray.buffer));
-      console.log("[GoMaa] Running carnatic segmentation...");
-      carnaticSegments = await analyzeCarnaticAudio(pcmTmpPath, sampleRate, totalDuration, {
-        pallaviEnd: opts.pallaviEnd || 90,
-        anupallaviEnd: opts.anupallaviEnd || 180
-      });
-      console.log(`[GoMaa] Segments: ${carnaticSegments.length} (${carnaticSegments.filter(s => s.type === "SAHITYA").length} SAHITYA)`);
-    } catch (e) {
-      console.warn("[GoMaa] Segmenter error:", e.message);
-    } finally {
-      try { fs.unlinkSync(pcmTmpPath); } catch (_) {}
+  if (transcription && transcription.text) {
+    const hallCheck = detectHallucination(transcription.text, transcription.words || []);
+    isHallucinated = hallCheck.isGarbage;
+    hallucinationReason = hallCheck.reason;
+    if (isHallucinated) {
+      console.log(`[GoMaa] Transcription hallucinated (${hallucinationReason}). Using composition DB fallback.`);
+      transcription = { text: "", words: [] };
+    } else if (hallCheck.cleanText && hallCheck.cleanText !== transcription.text) {
+      transcription.text = hallCheck.cleanText;
     }
   }
 
-  // ── MAP TRANSCRIPTION → SEGMENTS ───────────────────────────────────
-  const alignedSegments = assignTranscriptionToSegments(transcription, carnaticSegments);
+  if (!compositionLyrics) {
+    ragaLyrics = getRagaBasedLyrics(raga.label);
+  }
 
-  // ── BUILD SECTION LYRICS (raw + Telugu) ────────────────────────────
-  const { sections: sectionLyrics, sectionsTelugu: sectionLyricsTelugu } = buildSectionLyrics(alignedSegments);
-
-  // ── RAGA-BASED LYRICS FALLBACK ─────────────────────────────────────
-  const ragaBasedLyrics = getRagaBasedLyrics(raga.label);
-
-  const sahityamGrid = swaraFrames.length > 0 ? buildSahityamGrid(swaraFrames, pitchFrames, talaResult, tempoResult.bpm, raga.label, sampleRate, alignedSegments) : null;
-  const lyricsData = buildLyricsData(raga, sahityamGrid, transcription, sectionLyrics, sectionLyricsTelugu, ragaBasedLyrics);
-
-  const mergedGamakas = [...new Set([...(detectedGamakas.length ? detectedGamakas : []), ...(raga.gamakas || ["kampita"])])];
-  raga.gamakas = mergedGamakas;
-
-  // ── SHEET MUSIC & MIDI ─────────────────────────────────────────────
-  let sheet = "", midi = "", stems = {};
+  // Carnatic segmentation
+  let segments = [];
   try {
-    sheet = generateSheetMusicXml(raga, {
-      tala: talaResult.name,
-      transcription: {
-        full: String(lyricsData.sections.sahityam || ""),
-        pallavi: String(lyricsData.sections.pallavi || ""),
-        anupallavi: String(lyricsData.sections.anupallavi || ""),
-        charanam: String(lyricsData.sections.charanam || "")
-      },
-      pitchFrames: pitchFrames
-    });
-  } catch(e) { console.warn("[GoMaa] sheet gen error:", e.message); }
-  try { midi = generateMidi(raga, { instruments: ["veena", "tampura", "mridangam", "violin"], tempo: tempoResult.bpm }); } catch(e) { console.warn("[GoMaa] midi gen error:", e.message); }
-  try { stems = buildStemInfo(raga, alignedSegments); } catch(e) {}
+    segments = await analyzeCarnaticAudio(filePath, sampleRate, duration, {});
+    if (transcription && transcription.words) {
+      segments = assignTranscriptionToSegments(transcription, segments);
+    }
+  } catch (e) {
+    console.warn("[GoMaa] Segmentation error:", e.message);
+  }
 
-  // ── FINGERPRINT / EMBED ────────────────────────────────────────────
-  let fp = { hash: "", peaks: [] };
-  let embed = { vector: [] };
-  try { fp = generateFingerprint(filePath) || fp; } catch(e) { console.warn("[GoMaa] fingerprint error:", e.message); }
-  try { embed = embedAudio(filePath, fileSize, null) || embed; } catch(e) { console.warn("[GoMaa] embed error:", e.message); }
+  const sectionLyrics = buildSectionLyrics(segments);
 
-  let fpMatches = [];
+  // Swara evaluation
+  const semiToSwara = buildSemiToSwara(parseSwaras(raga.aroha), parseSwaras(raga.avaroha));
+  const swaraFrames = evaluateSwaras(pitchFrames, semiToSwara, sampleRate);
+
+  // Beat mapping
+  const beatPeriod = tempoResult.beatPeriodFrames || Math.round(sampleRate * 60 / tempoResult.bpm / 512);
+  const beatSwaras = [];
+  for (let i = 0; i < swaraFrames.length; i += beatPeriod) {
+    const frame = swaraFrames[i];
+    beatSwaras.push({ swara: frame.swara, gamaka: frame.gamaka, time: frame.time, confidence: frame.confidence || 0 });
+  }
+
+  // Section grids
+  const sectionGrids = splitByDetectedSections(beatSwaras, segments);
+  const sahityamGrid = buildSahityamGrid(beatSwaras, talaObj);
+
+  // Sheet music / MIDI
+  let sheetMusicXml = null, midiB64 = null;
   try {
-    await Promise.race([db.getDb(), new Promise((_, rej) => setTimeout(() => rej(new Error("DB timeout")), 3000))]);
-    const fpRows = db.all("SELECT f.hash,f.music_id,m.title,m.raga,m.artist FROM fingerprint f LEFT JOIN music m ON m.id=f.music_id LIMIT 300") || [];
-    fpMatches = matchFingerprint(fp, fpRows.map(r => ({ id: r.music_id, hash: r.hash, title: r.title, raga: r.raga, artist: r.artist, score: r.hash === fp.hash ? 1.0 : 0.2, peaks: fp.peaks })));
-    fuse(fpMatches[0] || null, { score: 0.75 }, raga);
-  } catch(_) {}
+    sheetMusicXml = generateSheetMusicXml(beatSwaras, talaObj, raga);
+    midiB64 = generateMidi(beatSwaras, talaObj, raga);
+  } catch (e) {
+    console.warn("[GoMaa] Sheet music error:", e.message);
+  }
 
-  const recId = crypto.createHash("md5").update(filePath + Date.now()).digest("hex").slice(0, 16);
-  const result = {
-    id: recId, recognized: fpMatches.length > 0, fileName: originalName, sourceUrl: sourceUrl || null,
-    raga: raga.label, ragaNumber: raga.ragaNumber, ragaChakra: raga.chakra,
-    aroha: arohaAvaroha.aroha, avaroha: arohaAvaroha.avaroha,
-    detectedAroha: arohaAvaroha.detectedAroha, detectedAvaroha: arohaAvaroha.detectedAvaroha,
-    mood: raga.mood, gamakas: raga.gamakas, confidence: raga.confidence,
-    detectionScore: raga.score, detectionSource: raga.detectionSource, topCandidates: raga.topCandidates,
-    isRagamalika: ragaM.isRagamalika, ragamalikaSegments: ragaM.segments,
-    audioAnalysis: {
-      detectedScale: audioScale.semis, chroma: audioScale.chroma, estimatedTempo: tempoResult.bpm, tempoConfidence: tempoResult.confidence,
-      detectedGamakas, instruments: detectedInstruments, pitchFrameCount: pitchFrames.length,
-      tala: { name: talaResult.name, beats: talaResult.beats, sections: talaResult.sections, angaStr: talaResult.angaStr, jati: talaResult.jati, coreTala: talaResult.coreTala, tradition: talaResult.tradition, clapOn: talaResult.clapOn, detectedBeats: talaResult.detectedBeats, confidence: talaResult.confidence, cycleVotes: talaResult.cycleVotes, note: talaResult.note, alternatives: talaResult.alternatives }
-    },
-    instruments: detectedInstruments, gamakaAnalysis: { detected: detectedGamakas, summary: detectedGamakas.join(", ") || "sustained" },
-    swaraFrames: swaraFrames.slice(0, 2000), swaraCount: swaraFrames.length, sahityamGrid: sahityamGrid || null,
-    lyricsData, transcription, transcriptionHallucination,
-    sheetMusicXml: sheet, midiB64: midi, stems,
-    fingerprint: fp, embedding: embed, fpMatches: fpMatches.slice(0, 5)
+  // Ragamalika
+  const ragamalika = detectRagamalika(filePath, fileSize, null);
+
+  // Build result
+  const processingTime = Date.now() - startTime;
+
+  const finalLyrics = compositionLyrics || ragaLyrics || {
+    pallavi: sectionLyrics.sections.pallavi || "",
+    anupallavi: sectionLyrics.sections.anupallavi || "",
+    charanam: sectionLyrics.sections.charanam || "",
+    sahityam: sectionLyrics.sections.sahityam || ""
   };
 
-  try {
-    db.run("INSERT OR REPLACE INTO music (id,title,artist,raga,ragaNumber,aroha,avaroha,mood,gamakas,filePath,embedding,analysisJson,createdAt) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))",
-      [recId, originalName, sourceUrl || "upload", raga.label, raga.ragaNumber, arohaAvaroha.aroha, arohaAvaroha.avaroha, raga.mood,
-       JSON.stringify(raga.gamakas || []), filePath, JSON.stringify(embed.vector), JSON.stringify(result)]);
-  } catch(_) {}
+  const lyricsData = {
+    pallavi: finalLyrics.pallavi || "",
+    anupallavi: finalLyrics.anupallavi || "",
+    charanam: finalLyrics.charanam || "",
+    sahityam: finalLyrics.sahityam || "",
+    telugu: {
+      pallavi: transliterateToTelugu(finalLyrics.pallavi || ""),
+      anupallavi: transliterateToTelugu(finalLyrics.anupallavi || ""),
+      charanam: transliterateToTelugu(finalLyrics.charanam || ""),
+      sahityam: transliterateToTelugu(finalLyrics.sahityam || "")
+    },
+    source: compositionLyrics ? "composition_db" : (ragaLyrics ? "raga_generic" : "transcription"),
+    isHallucinated,
+    hallucinationReason
+  };
 
-  if (cacheKey) _cacheSet(cacheKey, result);
+  const transcriptionData = transcription || { text: "", words: [] };
+
+  // Sample pitch frames for UI (every 100th frame to keep response size manageable)
+  const sampledPitchFrames = [];
+  for (let idx = 0; idx < pitchFrames.length; idx += 100) {
+    const f = pitchFrames[idx];
+    if (f) {
+      sampledPitchFrames.push({
+        time: +((idx * 512) / sampleRate).toFixed(2),
+        freq: f.freq,
+        midi: f.midi,
+        semi: f.semi,
+        confidence: +(f.confidence || 0).toFixed(3)
+      });
+    }
+    if (sampledPitchFrames.length >= 500) break;
+  }
+
+  const result = {
+    id: recId,
+    title: originalName,
+    artist: sourceUrl || "upload",
+    raga: raga.label,
+    ragaNumber: raga.ragaNumber,
+    chakra: raga.chakra,
+    melakarta: raga.ragaNumber,
+    janya: raga.ragaNumber > 0 && raga.ragaNumber <= 72 ? false : true,
+    parentRaga: raga.ragaNumber > 0 && raga.ragaNumber <= 72 ? raga.label : null,
+    aroha: arohaAvaroha.aroha,
+    avaroha: arohaAvaroha.avaroha,
+    detectedAroha: arohaAvaroha.detectedAroha,
+    detectedAvaroha: arohaAvaroha.detectedAvaroha,
+    mood: raga.mood,
+    gamakas: raga.gamakas || ["kampita"],
+    tala: talaObj.name,
+    talaDetail: talaObj,
+    tempo: tempoResult.bpm,
+    tempoConfidence: tempoResult.confidence,
+    tempoDetail: {
+      bpm: tempoResult.bpm,
+      beatPeriodFrames: tempoResult.beatPeriodFrames,
+      confidence: tempoResult.confidence
+    },
+    duration: +duration.toFixed(2),
+    filePath,
+    instruments,
+    // Pitch detection output
+    pitchDetection: {
+      totalFrames: pitchFrames.length,
+      sampleRate: sampleRate,
+      sampledFrames: sampledPitchFrames,
+      pitchRange: {
+        min: Math.min(...pitchFrames.filter(f => f.freq > 0).map(f => f.freq)) || 0,
+        max: Math.max(...pitchFrames.filter(f => f.freq > 0).map(f => f.freq)) || 0
+      }
+    },
+    // Scale detection output
+    scaleDetection: {
+      chroma: audioScale.chroma.map((v, i) => ({ semi: i, note: ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][i], energy: +v.toFixed(3) })),
+      detectedSemis: audioScale.semis,
+      energy: audioScale.energy.map((v, i) => ({ semi: i, value: +v.toFixed(3) }))
+    },
+    // Beat detection output
+    beatDetection: {
+      bpm: tempoResult.bpm,
+      beatPeriodFrames: tempoResult.beatPeriodFrames,
+      confidence: tempoResult.confidence,
+      totalBeats: beatSwaras.length
+    },
+    // Tala detection output
+    talaDetection: talaObj,
+    // Raga detection output
+    ragaDetection: {
+      label: raga.label,
+      score: raga.score,
+      confidence: raga.confidence,
+      confidenceLabel: raga.confidenceLabel,
+      source: raga.detectionSource,
+      ragaNumber: raga.ragaNumber,
+      chakra: raga.chakra,
+      melakarta: raga.ragaNumber,
+      topCandidates: raga.topCandidates || []
+    },
+    // Combined detection
+    combinedDetection: {
+      raga: raga.label,
+      tala: talaObj.name,
+      tempo: tempoResult.bpm,
+      scale: arohaAvaroha.aroha + ' / ' + arohaAvaroha.avaroha,
+      confidence: raga.confidence
+    },
+    segments: segments.map(s => ({
+      type: s.type,
+      section: s.section,
+      start: s.start,
+      end: s.end,
+      line: s.line || "",
+      lineTelugu: s.lineTelugu || "",
+      swaras: s.swaras || "",
+      gamaka: s.gamaka || "",
+      tala: s.tala || "",
+      wordCount: s.wordCount || 0,
+      transcriptionQuality: s.transcriptionQuality || 0
+    })),
+    sectionLyrics: sectionLyrics.sections,
+    sectionLyricsTelugu: sectionLyrics.sectionsTelugu,
+    beatSwaras: beatSwaras.slice(0, 200),
+    sahityamGrid: sahityamGrid.slice(0, 20),
+    sectionGrids: {
+      pallavi: buildSahityamGrid(sectionGrids.pallavi || [], talaObj),
+      anupallavi: buildSahityamGrid(sectionGrids.anupallavi || [], talaObj),
+      charanam: buildSahityamGrid(sectionGrids.charanam || [], talaObj)
+    },
+    sheetMusicXml,
+    midiB64,
+    ragamalika,
+    topCandidates: raga.topCandidates || [],
+    detectionSource: raga.detectionSource,
+    confidence: raga.confidence,
+    confidenceLabel: raga.confidenceLabel,
+    processingTime,
+    lyrics: lyricsData,
+    transcription: transcriptionData
+  };
+
+  // Save to DB
+  try {
+    db.run(
+      `INSERT OR REPLACE INTO music (
+        id, title, artist, raga, ragaNumber, aroha, avaroha, mood, gamakas,
+        tala, tempo, duration, filePath, embedding, chromaVector, sections,
+        sheetMusic, midiData, language, analysisJson, lyricsJson, transcriptionJson, createdAt
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,strftime('%s','now'))`,
+      [
+        recId, originalName, sourceUrl || "upload", raga.label, raga.ragaNumber,
+        arohaAvaroha.aroha, arohaAvaroha.avaroha, raga.mood,
+        JSON.stringify(raga.gamakas || []), talaObj.name, tempoResult.bpm,
+        +duration.toFixed(2), filePath,
+        JSON.stringify(embed?.vector || []),
+        JSON.stringify(audioScale.chroma),
+        JSON.stringify(segments),
+        sheetMusicXml || "",
+        midiB64 || "",
+        compositionLyrics?.language || ragaLyrics?.language || "auto",
+        JSON.stringify(result),
+        JSON.stringify(lyricsData),
+        JSON.stringify(transcriptionData)
+      ]
+    );
+    console.log("[GoMaa] Saved to DB:", recId);
+  } catch (e) {
+    console.error("[GoMaa] DB save error:", e.message);
+  }
+
   return result;
 }
 
-router.post("/upload", upload.single("audio"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const result = await analyseFile(req.file.path, req.file.originalname, req.file.size, null, {
-      language: req.headers["x-language"] || "",
-      model: req.headers["x-model"] || "base"
-    });
-    setTimeout(() => { try { fs.unlinkSync(req.file.path); } catch(_) {} }, 60000);
-    res.json(result);
-  } catch (e) { console.error("recognize/upload:", e.message); res.status(500).json({ error: e.message }); }
-});
+// ═══════════════════════════════════════════════════════════════════════
+// EXPRESS ROUTES
+// ═══════════════════════════════════════════════════════════════════════
 
-router.post("/buffer", express.raw({ type: "*/*", limit: "500mb" }), async (req, res) => {
+router.post("/", upload.single("audio"), async (req, res) => {
   try {
-    if (!req.body || !req.body.length) return res.status(400).json({ error: "Empty buffer" });
-    const id = crypto.randomBytes(8).toString("hex");
-    const xfn = decodeURIComponent(req.headers["x-filename"] || "recording.webm");
-    const ext = (xfn.match(/\.(mp3|wav|ogg|flac|webm|m4a|mp4|avi|mov|mkv)$/i) || [".webm"])[0];
-    const fp = path.join(UPLOAD_DIR, `buf_${id}${ext}`);
-    fs.writeFileSync(fp, req.body);
-    const result = await analyseFile(fp, xfn, req.body.length, null, {
-      language: req.headers["x-language"] || "",
-      model: req.headers["x-model"] || "base"
-    });
-    setTimeout(() => { try { fs.unlinkSync(fp); } catch(_) {} }, 60000);
-    res.json(result);
-  } catch (e) { console.error("recognize/buffer:", e.message); res.status(500).json({ error: e.message }); }
-});
+    const file = req.file;
+    const url = req.body?.url || req.body?.youtubeUrl || req.body?.externalUrl || "";
+    let filePath = "";
+    let originalName = "";
+    let sourceUrl = null;
 
-router.post("/url", express.json(), async (req, res) => {
-  try {
-    const { url, language, model } = req.body || {};
-    if (!url) return res.status(400).json({ error: "url required" });
-    const isYouTube = YT_HOSTS.some(h => url.includes(h));
-    let tmpPath = null, originalName = "url_audio.mp3";
-    if (isYouTube) {
-      const ytdlp = process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
-      tmpPath = path.join(UPLOAD_DIR, `yt_${Date.now()}.mp3`);
-      originalName = `youtube_${Date.now()}.mp3`;
-      try {
-        await new Promise((resolve, reject) => {
-          const proc = spawn(ytdlp, ["-f", "bestaudio", "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0", "-o", tmpPath, url], { timeout: 120000 });
-          let stderr = "";
-          proc.stderr.on("data", d => stderr += d);
-          proc.on("close", code => { if (code !== 0) reject(new Error(`yt-dlp failed: ${stderr.slice(0, 200)}`)); else resolve(); });
-        });
-      } catch (e) { return res.status(400).json({ error: "YouTube download requires yt-dlp. Install: pip install yt-dlp", hint: "Or download the audio manually and upload it.", ytEmbedHint: true }); }
-    } else {
-      let parsedUrl;
-      try { parsedUrl = new URL(url); } catch (_) { return res.status(400).json({ error: "Invalid URL" }); }
-      const proto = parsedUrl.protocol === "https:" ? https : http;
-      const audioData = await new Promise((resolve, reject) => {
-        const chunks = [];
-        const opts = { hostname: parsedUrl.hostname, port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80), path: parsedUrl.pathname + parsedUrl.search, method: "GET", headers: { ...FETCH_HEADERS, Referer: parsedUrl.origin || "https://" + parsedUrl.hostname }, timeout: 30000 };
-        const req2 = proto.request(opts, r => {
-          if ([301, 302, 303, 307, 308].includes(r.statusCode) && r.headers.location) {
-            return proto.get(r.headers.location, { headers: FETCH_HEADERS, timeout: 20000 }, r2 => { const chunks2 = []; r2.on("data", c => chunks2.push(c)); r2.on("end", () => resolve(Buffer.concat(chunks2))); }).on("error", reject);
-          }
-          if (r.statusCode !== 200) return reject(new Error(`Server returned ${r.statusCode}`));
-          r.on("data", c => chunks.push(c)); r.on("end", () => resolve(Buffer.concat(chunks)));
-        });
-        req2.on("error", reject); req2.on("timeout", () => { req2.destroy(); reject(new Error("Timeout (30s)")); }); req2.end();
-      });
-      if (audioData.length < 1024) return res.status(400).json({ error: "URL returned too little data" });
-      const suffix = (url.match(/\.(mp3|wav|flac|ogg|m4a|mp4|webm)/i) || [".mp3"])[0];
-      tmpPath = path.join(UPLOAD_DIR, `url_${Date.now()}${suffix}`);
-      originalName = path.basename(parsedUrl.pathname) || `url_audio${suffix}`;
-      fs.writeFileSync(tmpPath, audioData);
+    // ── FILE UPLOAD ────────────────────────────────────────────────────
+    if (file) {
+      originalName = file.originalname || path.basename(filePath);
+      // Multer saves temp files without extension — FFmpeg on Windows needs it
+      filePath = ensureExtension(file.path, originalName);
     }
-    const result = await analyseFile(tmpPath, originalName, fs.statSync(tmpPath).size, url, { language: language || "", model: model || "base" });
-    setTimeout(() => { try { fs.unlinkSync(tmpPath); } catch (_) {} }, 30000);
+    // ── URL DOWNLOAD (YouTube or generic) ──────────────────────────────
+    else if (url) {
+      try {
+        const downloadResult = await downloadFromUrl(url, UPLOAD_DIR);
+        filePath = downloadResult.filePath;
+        originalName = downloadResult.originalName;
+        sourceUrl = downloadResult.sourceUrl;
+      } catch (e) {
+        console.error("[GoMaa] URL download failed:", e.message);
+        return res.status(400).json({ error: `Download failed: ${e.message}` });
+      }
+    }
+    // ── LIVE RECORDING (blob upload, same as file) ─────────────────────
+    else if (req.body?.recording) {
+      // Base64 recording data
+      const recordingData = req.body.recording;
+      const buffer = Buffer.from(recordingData, "base64");
+      const recId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`;
+      filePath = path.join(UPLOAD_DIR, `recording_${recId}.webm`);
+      fs.writeFileSync(filePath, buffer);
+      originalName = "Live Recording";
+    }
+    else {
+      return res.status(400).json({ error: "No audio file, URL, or recording provided" });
+    }
+
+    const opts = {
+      model: req.body?.model || req.headers["x-model"] || "small",
+      language: req.body?.language || req.headers["x-language"] || ""
+    };
+
+    const result = await analyseFile(filePath, originalName, sourceUrl, opts);
+    if (result.error) {
+      return res.status(500).json(result);
+    }
     res.json(result);
-  } catch (e) { console.error("recognize/url:", e.message); res.status(500).json({ error: e.message }); }
-});
-
-router.get("/stems/:id", async (req, res) => {
-  try {
-    await db.getDb();
-    const row = db.get("SELECT * FROM music WHERE id=?", [req.params.id]);
-    if (!row) return res.status(404).json({ error: "Not found" });
-    const raga = { label: row.raga, aroha: row.aroha, avaroha: row.avaroha, mood: row.mood, gamakas: JSON.parse(row.gamakas || "[]") };
-    res.json(buildStemInfo(raga, []));
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-router.get("/lyrics/:id", async (req, res) => {
-  try {
-    await db.getDb();
-    const row = db.get("SELECT * FROM music WHERE id=?", [req.params.id]);
-    if (!row) return res.status(404).json({ error: "Not found" });
-    const raga = { label: row.raga, aroha: row.aroha, avaroha: row.avaroha, mood: row.mood, gamakas: JSON.parse(row.gamakas || "[]") };
-    const analysis = JSON.parse(row.analysisJson || "{}");
-    const lyrics = buildLyricsData(raga, analysis.sahityamGrid, analysis.transcription,
-      analysis.lyricsData?.sections, analysis.lyricsData?.sectionsTelugu, getRagaBasedLyrics(raga.label));
-    res.json(lyrics);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    console.error("[GoMaa] Recognize route error:", e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;

@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """
-Carnatic Segmenter v3.0 — Audio-Aware Phrase Segmentation + Complete Telugu Transliteration
-FIXES v3.0:
-- Better SAHITYA vs ALAPANA classification using pitch stability + voicing
-- More robust section boundary detection (PALLAVI/ANUPALLAVI/CHARANAM)
-- Added segment quality scores for downstream filtering
-- Auto-detect: if input already contains Telugu script, passes through
+Carnatic Segmenter v5.0 — Audio-Aware Phrase Segmentation + Complete Telugu Transliteration
 """
 
 import sys, json, os, struct, tempfile, re
@@ -233,7 +228,6 @@ def get_seg_features(y, sr, start, end):
         p = np.array(frame_rms) / np.sum(frame_rms)
         energy_entropy = float(-np.sum(p * np.log(p + 1e-10)))
 
-    # Quality score: how likely is this segment to contain real lyrics
     quality = 0.0
     if voicing_ratio > 0.3 and pitch_mean > 80 and pitch_std < 80:
         quality = 0.7

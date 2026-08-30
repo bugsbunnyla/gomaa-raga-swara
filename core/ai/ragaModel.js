@@ -1,9 +1,9 @@
+'use strict';
+const { extractAudioMeta, parseTala } = require('../audio/audioMeta');
 
 // Safe string normaliser — prevents (name||'').replace errors when non-string passed
 function _str(v){ return (v===null||v===undefined)?'':(typeof v==='string'?v:String(v)); }
 
-'use strict';
-const { extractAudioMeta, parseTala } = require('../audio/audioMeta');
 /**
  * GoMaa Raga Vidya v3 — Raga Detection Engine
  *
@@ -13,13 +13,6 @@ const { extractAudioMeta, parseTala } = require('../audio/audioMeta');
  *      every raga's aroha+avaroha fingerprint (most accurate for audio)
  *   3. Chroma cosine similarity fallback
  *   4. Hash-based pseudorandom fallback (last resort)
- *
- * Key fix over v2:
- *   • Uses all ragas from melakartajanyaragalist.csv via models/ragas_db.json
- *   • Scale-exact matching: bilahari (S R2 G3 P D2) is never confused with
- *     Vanaspati (S R1 G1 M1 P D2 N2) because their aroha semitone sets differ
- *   • Ekadantam (shrIEkadantA, mela 16) correctly identified from its scale
- *     S R1 G3 P D2 — parent mela Chakravakam, NOT Vanaspati
  */
 
 const fs     = require('fs');
@@ -95,7 +88,7 @@ const RAGA_META = {
 
 // ── Module state ──────────────────────────────────────────────────────
 let _db = null;          // ragas_db.json (7599 ragas)
-let _kb = null;          // knowledge_base.json (72 melakartas)          // { ragas: [{n,m,a,v,c,as,vs}, ...] }
+let _kb = null;          // knowledge_base.json (72 melakartas)
 let _normed = null;      // ragas with pre-normalised chroma vectors
 
 function _loadDB() {
@@ -107,10 +100,10 @@ function _loadDB() {
     // Normalise ragas array format (v3 uses compact keys n/m/a/v/c/as/vs)
     if (_db.ragas && _db.ragas[0] && _db.ragas[0].n !== undefined) {
       // Load knowledge base for canonical name fallback
-  if (!_kb && require('fs').existsSync(KB_PATH)) {
-    try { _kb = JSON.parse(require('fs').readFileSync(KB_PATH,'utf8')); } catch(e){}
-  }
-  _normed = _db.ragas.map(r => ({
+      if (!_kb && fs.existsSync(KB_PATH)) {
+        try { _kb = JSON.parse(fs.readFileSync(KB_PATH,'utf8')); } catch(e){}
+      }
+      _normed = _db.ragas.map(r => ({
         name:    r.n,
         melakarta: r.m || 0,
         aroha:   r.a || '',
@@ -196,27 +189,22 @@ function _chromaFromSemiSet(semis) {
 // ── Filename matching ─────────────────────────────────────────────────
 
 // ── Carnatic composition title → raga map (server-side) ─────────────────
-// "Mahaganapatim" is Dikshitar's composition in nATA raga (refs 4807-4814)
-// nATA: janya of Melakarta 36 (Chalanata); aroha S R3 G3 M1 P D3 N3 S; avaroha S N3 P M1 R3 S
-// ── Composition name → definitive raga (server-side lookup) ──────────────
-// Key = filename normalised (lowercase, alphanumeric only)
-// Value = raga name as in ragas_db.json or knowledge_base.json
 const _COMPOSITION_MAP = {
-  // nATA (m=36 Chalanata janya) — aroha:S R3 G3 M1 P D3 N3 S avaroha:S N3 P M1 R3 S
+  // nATA (m=36 Chalanata janya)
   'mahaganapatim':'nATA','mahaganapathim':'nATA','mahaganapati':'nATA','mahaganapataye':'nATA','sriganapate':'nATA','ganapatinuta':'nATA',
-  // Shanmukhapriya (m=56) — aroha:S R2 G2 M2 P D1 N2 S avaroha:S N2 D1 P M2 G2 R2 S
+  // Shanmukhapriya (m=56)
   'siddhivinayakam':'Shanmukhapriya','siddhivinayaka':'Shanmukhapriya','shanmukhapriya':'Shanmukhapriya',
-  // mOhanA (m=28 janya) — pentatonic S R2 G3 P D2 S
+  // mOhanA (m=28 janya)
   'mohanaram':'mOhanA','ninnukori':'mOhanA','mohanaraga':'mOhanA','ninnukoriyunte':'mOhanA',
-  // harikAmbhOji (m=28) — S R2 G3 M1 P D2 N2 S / S N2 D2 P M1 G3 R2 S  tala:Rupakam
+  // harikAmbhOji (m=28)
   'saketha':'harikAmbhOji','saaketa':'harikAmbhOji','saketanagara':'harikAmbhOji',
-  // kannaDa (m=29 janya vakra) — S R2 G3 M1 P M1 D2 N3 S / S N3 S D2 P M1 G3 M1 G3 M1 R2 S tala:Rupakam
+  // kannaDa (m=29 janya vakra)
   'saketaniketana':'kannaDa','saakethaniketana':'kannaDa','kannadaragam':'kannaDa','saketaniketan':'kannaDa',
   // bilahari (m=29 janya) — Aa:S R2 G3 P D2 S Av:S N3 D2 P M1 G3 R2 S tala:Misra Chapu
   'ekadantam':'bilahari','ekadanta':'bilahari',
-  // kAnaDA (m=22 janya) — Balambikayam
+  // kAnaDA (m=22 janya)
   'balambikayam':'kAnaDA','balambika':'kAnaDA','balambikayayam':'kAnaDA',
-  // Madhukauns — Hindustani, pentatonic S G3 M1 D3 N3 (no R, no P)
+  // Madhukauns
   'madhukauns':'Madhukauns','madhukaunsa':'Madhukauns','madhukaunsi':'Madhukauns','madhukaun':'Madhukauns',
   // bilahari
   'vatapiganapatim':'bilahari',
@@ -224,7 +212,6 @@ const _COMPOSITION_MAP = {
 
 function _matchComposition(baseName) {
   const key = _str(baseName).toLowerCase().replace(/[^a-z0-9]/g,'');
-  // Find in composition map — exact first, then substring (handles long filenames)
   const mapKey = _COMPOSITION_MAP[key] ? key
     : Object.keys(_COMPOSITION_MAP).find(k=>k.length>=5&&key.includes(k));
   if(!mapKey) return null;
@@ -232,43 +219,18 @@ function _matchComposition(baseName) {
   const ragaName = _COMPOSITION_MAP[mapKey];
   _loadDB();
 
-  // Search _normed (ragas_db) first
   let found = (_normed||[]).find(r=>r.name.toLowerCase()===ragaName.toLowerCase()) ||
               (_normed||[]).find(r=>r.name.toLowerCase().includes(ragaName.toLowerCase().slice(0,6)));
 
-  // Fallback: build entry from knowledge_base.json (covers Madhukauns + others)
   if(!found && _kb && _kb.ragas){
     const kbe = _kb.ragas.find(r=>(r.name||'').toLowerCase()===ragaName.toLowerCase());
     if(kbe) found = {
       name:kbe.name, melakarta:kbe.number||0, aroha:kbe.aroha||'', avaroha:kbe.avaroha||'',
-      arohaS:[], avarohaS:[], chroma:kbe.chroma||new Array(12).fill(0),
+      chroma:kbe.chroma||new Array(12).fill(0), arohaS:[], avarohaS:[],
       mood:kbe.mood||'', gamakas:kbe.gamakas||[], number:kbe.number||0, chakra:kbe.chakra||''
     };
   }
   return found||null;
-}
-function _matchComposition(baseName) {
-  if(!baseName||typeof baseName!=='string') return null;
-  const key = _str(baseName).toLowerCase().replace(/[^a-z0-9]/g,'');
-  const ragaName = _COMPOSITION_MAP[key];
-  if (!ragaName) return null;
-  // Find in DB by name
-  _loadDB();  // ensure DB is loaded
-  // _normed entries have .name (from r.n), .arohaS, .avarohaS
-  // Also search knowledge_base for common English names (e.g. "Shanmukhapriya")
-  const kbEntry = _kb && _kb.ragas
-    ? (_kb.ragas.find(r => _str(r.name).toLowerCase() === _str(ragaName).toLowerCase()) ||
-       _kb.ragas.find(r => r.name.toLowerCase().includes(ragaName.toLowerCase().slice(0,6))))
-    : null;
-  return (_normed||[]).find(r => _str(r.name).toLowerCase() === _str(ragaName).toLowerCase()) ||
-         (_normed||[]).find(r => r.name.toLowerCase().includes(ragaName.toLowerCase().slice(0,6))) ||
-         (kbEntry ? {
-           name: kbEntry.name, melakarta: kbEntry.number,
-           aroha: kbEntry.aroha, avaroha: kbEntry.avaroha,
-           chroma: kbEntry.chroma, arohaS: [], avarohaS: [],
-           mood: kbEntry.mood, gamakas: kbEntry.gamakas||[], number: kbEntry.number,
-           chakra: kbEntry.chakra
-         } : null);
 }
 
 function _matchFilename(baseName) {
@@ -277,8 +239,8 @@ function _matchFilename(baseName) {
   const sorted = (_normed||[]).slice().sort((a,b)=>(b.name||'').length-(a.name||'').length);
   for(const r of sorted){
     const rn = (r.name||'').toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
-    if(!rn||rn.length<6) continue;  // skip very short names (prevents "adan" matching "ekadantam")
-    if(rn.length < bn.length*0.4) continue; // name must be >=40% of filename length
+    if(!rn||rn.length<6) continue;
+    if(rn.length < bn.length*0.4) continue;
     if(bn.includes(rn)) return r;
     const words = rn.split(/\s+/).filter(w=>w.length>=5);
     if(words.length>=1 && words.every(w=>bn.includes(w))) return r;
@@ -286,14 +248,12 @@ function _matchFilename(baseName) {
   return null;
 }
 
-
 // ── Chroma from raw audio bytes (DFT-free approximation) ─────────────
 function _chromaFromBytes(buf) {
   const c = new Array(12).fill(0);
   const step = Math.max(1, Math.floor(buf.length / 8192));
   for (let i = 0; i < buf.length; i += step) {
     c[buf[i] % 12] += 1;
-    // Weight byte pairs for better tonal discrimination
     if (i + 1 < buf.length) c[(buf[i] ^ buf[i+1]) % 12] += 0.3;
   }
   const mx = Math.max(...c, 1);
@@ -328,10 +288,6 @@ function _readChunk(fp, offset, maxBytes) {
 }
 
 // ── SCALE EXACT MATCH ─────────────────────────────────────────────────
-// Compares the detected semitone set from audio against each raga's
-// aroha + avaroha semitone fingerprint.  Gives a precision/recall score:
-//   score = 2 * |detected ∩ raga| / (|detected| + |raga|)   (F1-like)
-// Higher weight given to aroha match since it's more distinctive.
 function _scaleExactScore(detectedSemis, raga) {
   if (!detectedSemis || detectedSemis.length === 0) return 0;
   const detSet = new Set(detectedSemis);
@@ -339,13 +295,11 @@ function _scaleExactScore(detectedSemis, raga) {
   const avarohaSet = new Set(raga.avarohaS || []);
   const allRagaSet = new Set([...arohaSet, ...avarohaSet]);
 
-  // Intersection counts
   let arohaInt = 0;
   for (const s of detSet) if (arohaSet.has(s)) arohaInt++;
   let allInt = 0;
   for (const s of detSet) if (allRagaSet.has(s)) allInt++;
 
-  // F1-like score weighted toward aroha (60%) + all-semis (40%)
   const arohaF1 = arohaSet.size > 0
     ? 2 * arohaInt / (detSet.size + arohaSet.size)
     : 0;
@@ -378,7 +332,6 @@ function _scoreAllCombined(chroma, detectedSemis) {
     .map(r => {
       const cosSc  = _cosDot(q, r.norm);
       const scaleSc = _scaleExactScore(detectedSemis, r);
-      // Scale score gets 70% weight if semis detected, else pure cosine
       const combined = detectedSemis && detectedSemis.length > 0
         ? 0.30 * cosSc + 0.70 * scaleSc
         : cosSc;
@@ -388,33 +341,24 @@ function _scoreAllCombined(chroma, detectedSemis) {
 }
 
 // ── EXTRACT SEMITONES FROM AUDIO BUFFER ──────────────────────────────
-// Uses a simplified pitch-class profile: for each byte-pair in the buffer,
-// estimate which of 12 pitch classes is most strongly represented.
-// This is a heuristic — real pitch detection needs FFT or YIN.
 function _extractSemisFromBuf(buf) {
   if (!buf || buf.length < 256) return [];
   const energy = new Array(12).fill(0);
   const step = Math.max(1, Math.floor(buf.length / 16384));
 
   for (let i = 0; i + 1 < buf.length; i += step) {
-    // Treat consecutive byte values as rough pitch amplitude
     const a = buf[i];
     const b = buf[i + 1];
-    // High-frequency variation → upper semitones
     const diff = Math.abs(a - b);
     const pitchClass = a % 12;
     energy[pitchClass] += a / 255.0;
-    // Cross-correlation hint
     if (diff > 20) energy[(pitchClass + diff % 5) % 12] += 0.3;
   }
 
-  // Normalise and threshold: keep top 7 semitones (typical raga has 5-7)
   const mx = Math.max(...energy, 1);
   const norm = energy.map((v, i) => ({ semi: i, e: v / mx }));
   norm.sort((a, b) => b.e - a.e);
 
-  // Adaptive threshold: keep semitones with energy > 30% of peak
-  // (ensures pentatonic ragas get ~5, sampurna get ~7)
   const threshold = 0.30;
   return norm.filter(x => x.e >= threshold).map(x => x.semi).sort((a, b) => a - b);
 }
@@ -425,7 +369,8 @@ function _buildResult(best, ranked, source) {
   return {
     label:    best.name,
     score:    sc,
-    confidence: sc > 0.75 ? 'high' : sc > 0.50 ? 'medium' : 'low',
+    confidence: sc,                     // ← NUMERIC 0–1
+    confidenceLabel: sc > 0.75 ? 'high' : sc > 0.50 ? 'medium' : 'low',
     ragaNumber: best.melakarta,
     chakra:   _chakraForMela(best.melakarta),
     aroha:    best.aroha,
@@ -453,16 +398,7 @@ function _chakraForMela(mela) {
 // PUBLIC API
 // ════════════════════════════════════════════════════════════════════════
 
-/**
- * detectRaga — main entry point
- *
- * Detection order:
- *   1. Filename token match (e.g. "bilahari_concert.mp3" → bilahari)
- *   2. Scale-exact + cosine combined score from audio bytes
- *   3. Hash-based fallback
- */
 function detectRaga(filePath, fileSize = 0, audioBuf = null) {
-  // Guard: filePath must be a string — coerce any non-string input safely
   filePath = (filePath===null||filePath===undefined) ? 'unknown.mp3'
            : (typeof filePath==='string') ? filePath
            : (Buffer.isBuffer(filePath)||filePath instanceof Uint8Array) ? 'audio.mp3'
@@ -471,17 +407,13 @@ function detectRaga(filePath, fileSize = 0, audioBuf = null) {
   let result_tala = null;
   const baseName = path.basename(filePath, path.extname(filePath));
 
-  // ── STEP 0a: ID3/metadata extraction (ffprobe) — PRIMARY, DETERMINISTIC ──
-  // Same file → same metadata → same result EVERY TIME. No byte-proxy randomness.
+  // ── STEP 0a: ID3/metadata extraction ───────────────────────────────
   try {
     const meta = extractAudioMeta(filePath);
     if(meta){
-      // Extract tala from metadata
       if(meta.talaHint) result_tala = meta.talaHint;
-      // Extract raga from metadata comment/title
       if(meta.ragaHint){
         const ragaName = meta.ragaHint.trim();
-        _loadDB();
         const metaMatch = (_normed||[]).find(r=>
           r.name.toLowerCase()===ragaName.toLowerCase())||
           (_normed||[]).find(r=>
@@ -493,10 +425,9 @@ function detectRaga(filePath, fileSize = 0, audioBuf = null) {
         }
       }
     }
-  } catch(e){ /* ffprobe not available — continue to next step */ }
+  } catch(e){ /* ffprobe not available */ }
 
-  // ── STEP 0: Composition title lookup (highest confidence) ──────────
-  // "Mahaganapatim" → nATA, "Mohana Rama" → mOhanA etc.
+  // ── STEP 0: Composition title lookup ───────────────────────────────
   const cm = _matchComposition(baseName);
   if (cm) {
     const ranked = _scoreAllCosine(cm.chroma);
@@ -519,33 +450,17 @@ function detectRaga(filePath, fileSize = 0, audioBuf = null) {
   }
 
   if (buf && buf.length > 512) {
-    // Detect compressed audio by magic bytes — byte-chroma is unreliable on
-    // compressed formats (WebM/MP3/FLAC high-entropy bytes always match the
-    // broadest chroma profile, consistently returning the wrong raga).
-    // For compressed audio: use hash-based detection (gives stable per-file result).
-    // For uncompressed PCM/WAV (low entropy header): use byte-chroma.
     const magic4 = buf.slice(0, 4);
-    const isWebM  = magic4[0]===0x1a && magic4[1]===0x45;          // WebM/MKV
-    const isMp3   = (magic4[0]===0xff && (magic4[1]&0xe0)===0xe0)  // MP3 frame
-                 || (magic4[0]===0x49 && magic4[1]===0x44);         // ID3 tag
-    const isMp4   = buf[4]===0x66 && buf[5]===0x74 && buf[6]===0x79; // ftyp
-    const isFlac  = magic4[0]===0x66 && magic4[1]===0x4c;           // fLaC
-    const isOgg   = magic4[0]===0x4f && magic4[1]===0x67;           // OggS
-    const isWav   = magic4[0]===0x52 && magic4[1]===0x49;           // RIFF
-    const isAiff  = magic4[0]===0x46 && magic4[1]===0x4f;           // FORM
+    const isWav  = magic4[0]===0x52 && magic4[1]===0x49;
+    const isAiff = magic4[0]===0x46 && magic4[1]===0x4f;
 
     if (isWav || isAiff) {
-      // PCM: byte distribution correlates better with pitch content
       const chroma = _chromaFromBytes(buf);
       const detectedSemis = _extractSemisFromBuf(buf);
       const ranked = _scoreAllCombined(chroma, detectedSemis);
       const best = ranked[0];
       return _buildResult(best, ranked, 'pcm-scale');
     }
-
-    // Compressed formats: byte values are encrypted/compressed — no pitch info.
-    // Fall through to hash-based detection below (gives unique per-file result).
-    // (intentional fall-through — do not add 'return' here)
   }
 
   // ── STEP 3: Hash fallback ─────────────────────────────────────────
@@ -555,13 +470,9 @@ function detectRaga(filePath, fileSize = 0, audioBuf = null) {
   return _buildResult({ ...best, score: best.score * 0.65 }, ranked, 'hash');
 }
 
-/**
- * detectRagamalika — multi-raga detection for longer performances
- */
 function detectRagamalika(filePath, fileSize = 0, audioBuf = null) {
   filePath = (filePath===null||filePath===undefined) ? 'unknown.mp3'
-           : (typeof filePath==='string') ? filePath
-           : String(filePath);
+           : (typeof filePath==='string') ? filePath : String(filePath);
   _loadDB();
   const dur = fileSize > 0 ? Math.round(fileSize / 16000) : 180;
   const primary = detectRaga(filePath, fileSize, audioBuf);
@@ -618,15 +529,6 @@ function detectRagamalika(filePath, fileSize = 0, audioBuf = null) {
   };
 }
 
-/**
- * detectRagaFromScale — detect raga given explicit aroha/avaroha strings
- * Enables client-side Web Audio pitch detection to pass extracted scale
- * and get an exact raga match from the full CSV database.
- *
- * @param {string} arohaStr  e.g. "S R2 G3 P D2 S"
- * @param {string} avarohaStr e.g. "S N3 D2 P M1 G3 R2 S"
- * @returns raga result object
- */
 function detectRagaFromScale(arohaStr, avarohaStr) {
   _loadDB();
   const arohaS  = _semiSetFromStr(arohaStr);
@@ -638,11 +540,6 @@ function detectRagaFromScale(arohaStr, avarohaStr) {
   return _buildResult(best, ranked, 'scale-input');
 }
 
-
-/**
- * detectRagaFromChroma — use pre-computed chroma from actual audio analysis
- * instead of filename/hash heuristics.
- */
 function detectRagaFromChroma(chroma, detectedSemis) {
   if (!chroma || chroma.length !== 12) {
     return _buildResult(_normed[0], _normed, 'chroma-fallback');
@@ -651,4 +548,4 @@ function detectRagaFromChroma(chroma, detectedSemis) {
   return _buildResult(ranked[0], ranked, 'audio-chroma');
 }
 
-module.exports = { detectRaga, detectRagamalika, detectRagaFromScale };
+module.exports = { detectRaga, detectRagamalika, detectRagaFromScale, detectRagaFromChroma };

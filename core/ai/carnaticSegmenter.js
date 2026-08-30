@@ -1,9 +1,10 @@
 "use strict";
 /**
  * GoMaa Unified Audio Processor — Node.js wrapper v3.2
- * FIXED: Added analyzeCarnaticAudio() that calls carnatic_segmenter.py correctly
- * NEW: Hallucination detection for Whisper "na na na" / "la la la" garbage
- * Complete IAST → Telugu transliteration engine
+ * FIXED v3.1:
+ *   - Carnatic-specific hallucination detection (tadhari/gapadasa/garechani patterns)
+ *   - Word-probability filtering in segment assignment
+ *   - Complete IAST → Telugu transliteration engine
  */
 
 const { spawn } = require("child_process");
@@ -31,7 +32,7 @@ const PY = findPython();
 console.log("[CarnaticSegmenter] Using Python:", PY);
 
 /* ═══════════════════════════════════════════════════════════════════════
-   HALLUCINATION DETECTION — filters Whisper "na na na" / "la la la" garbage
+   HALLUCINATION DETECTION — filters Whisper garbage on Carnatic singing
    ═══════════════════════════════════════════════════════════════════════ */
 
 const HALLUCINATION_PATTERNS = [
@@ -65,19 +66,58 @@ const HALLUCINATION_PATTERNS = [
   /^(la\s+la\s+)+/i,
   /^(da\s+da\s+)+/i,
   /^(ta\s+ta\s+)+/i,
+  // Carnatic-sounding gibberish patterns
+  /tadhari/gi,
+  /gapadasa/gi,
+  /garechani/gi,
+  /dapadasa/gi,
+  /darechani/gi,
+  /(dha|ga|pa|da|ta|ri|ni|na|la|ma|sa)\s+(dha|ga|pa|da|ta|ri|ni|na|la|ma|sa)\s+(dha|ga|pa|da|ta|ri|ni|na|la|ma|sa)\s+(dha|ga|pa|da|ta|ri|ni|na|la|ma|sa)/i,
 ];
 
 const GARBAGE_WORDS = new Set([
   "na", "la", "da", "ta", "di", "ti", "ra", "ri", "ma", "mi",
   "ka", "ki", "pa", "pi", "sa", "si", "ha", "hi", "ja", "ji",
-  "va", "vi", "ga", "gi", "ba", "bi", "uh", "um", "oh", "ah"
+  "va", "vi", "ga", "gi", "ba", "bi", "uh", "um", "oh", "ah",
+  "tadhari", "gapadasa", "garechani", "dapadasa", "darechani", "dhari", "pada", "gari", "chani", "dapa"
+]);
+
+// Common Sanskrit/Telugu/Tamil phonemes that appear in real Carnatic lyrics
+const VALID_CARNATIC_WORDS = new Set([
+  "bhaja", "bhaje", "bhajami", "bhajema", "namo", "namah", "namami",
+  "shri", "sri", "jaya", "jai", "raga", "raga", "tala", "swara",
+  "pallavi", "anupallavi", "charanam", "sahityam", "gamaka",
+  "kamala", "karuna", "daya", "pada", "pada", "kripa", "krpa",
+  "deva", "devi", "natha", "natha", "isha", "isha", "shiva",
+  "vishnu", "krishna", "rama", "gana", "gana", "pati", "pati",
+  "mata", "pita", "guru", "guha", "mura", "mura", "hari", "hari",
+  "mukunda", "murari", "govinda", "gopala", "yadava", "madhava",
+  "keshava", "narayana", "vasudeva", "radha", "sita", "lakshmi",
+  "saraswati", "durga", "kali", "gauri", "parvati", "uma",
+  "shankara", "parameshwara", "brahma", "surya", "chandra",
+  "ananda", "ananda", "chandra", "vimala", "shubha", "shanta",
+  "shanti", "mangala", "mangalam", "kalyani", "kalyana",
+  "sundara", "sundari", "kamala", "kamalam", "manjula",
+  "manohara", "manorama", "mohana", "mohana", "madhurya",
+  "madhava", "madhusudana", "murali", "muralidhara", "vamsi",
+  "venu", "venugopala", "yashoda", "nandana", "nandakumara",
+  "gopikanta", "gopijana", "vrindavana", "vrnda", "vrndavana",
+  "kaliya", "mardana", "mardana", "damodara", "dāmodara",
+  "ajamila", "ajamila", "dhruva", "prahlaada", "prahlad",
+  "bhishma", "bhisma", "karna", "arjuna", "bhima", "nakula",
+  "sahadeva", "yudhisthira", "draupadi", "subhadra", "balarama",
+  "aniruddha", "pradyumna", "sambha", "sambhu", "sankarshana",
+  "vasudeva", "devaki", "yashoda", "nandagopa", "upendra",
+  "trivikrama", "vamana", "narasimha", "nrsimha", "kurma",
+  "matsya", "varaha", "hayagriva", "hayagreeva", "buddha",
+  "kalki", "kalkin",
 ]);
 
 /**
  * Detect if transcription is hallucinated garbage.
  * Returns { isGarbage, reason, cleanText }
  */
-function detectHallucination(text) {
+function detectHallucination(text, words = []) {
   if (!text || typeof text !== "string") {
     return { isGarbage: true, reason: "empty", cleanText: "" };
   }
@@ -93,35 +133,54 @@ function detectHallucination(text) {
     }
   }
 
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  if (words.length === 0) {
+  const wordList = trimmed.split(/\s+/).filter(Boolean);
+  if (wordList.length === 0) {
     return { isGarbage: true, reason: "empty", cleanText: "" };
   }
 
   // Count garbage words
   let garbageCount = 0;
-  for (const w of words) {
+  let validCount = 0;
+  for (const w of wordList) {
     const clean = w.toLowerCase().replace(/[^a-z]/g, "");
     if (GARBAGE_WORDS.has(clean) || clean.length <= 1) {
       garbageCount++;
+    } else if (VALID_CARNATIC_WORDS.has(clean) || clean.length >= 5) {
+      validCount++;
     }
   }
-  const garbageRatio = garbageCount / words.length;
+  const garbageRatio = garbageCount / wordList.length;
+  const validRatio = validCount / wordList.length;
 
   // Check for excessive repetition of same word
-  const uniqueWords = new Set(words.map(w => w.toLowerCase()));
-  const diversity = uniqueWords.size / words.length;
+  const uniqueWords = new Set(wordList.map(w => w.toLowerCase()));
+  const diversity = uniqueWords.size / wordList.length;
 
-  // If >70% garbage words or <15% diversity → hallucination
+  // Check average word probability if available
+  let avgProb = 1.0;
+  if (Array.isArray(words) && words.length > 0) {
+    const probs = words.filter(w => w && typeof w.prob === "number").map(w => w.prob);
+    if (probs.length > 0) {
+      avgProb = probs.reduce((a, b) => a + b, 0) / probs.length;
+    }
+  }
+
+  // If >70% garbage words or <15% diversity or avg prob < 0.3 → hallucination
   if (garbageRatio > 0.70) {
     return { isGarbage: true, reason: `garbage_ratio_${Math.round(garbageRatio * 100)}%`, cleanText: "" };
   }
-  if (diversity < 0.15 && words.length > 10) {
+  if (diversity < 0.15 && wordList.length > 10) {
     return { isGarbage: true, reason: `low_diversity_${Math.round(diversity * 100)}%`, cleanText: "" };
+  }
+  if (avgProb < 0.25 && wordList.length > 5) {
+    return { isGarbage: true, reason: `low_probability_${Math.round(avgProb * 100)}%`, cleanText: "" };
+  }
+  if (validRatio < 0.10 && wordList.length > 8) {
+    return { isGarbage: true, reason: `no_valid_words_${Math.round(validRatio * 100)}%`, cleanText: "" };
   }
 
   // Clean the text: remove standalone garbage words
-  const cleanWords = words.filter(w => {
+  const cleanWords = wordList.filter(w => {
     const clean = w.toLowerCase().replace(/[^a-z]/g, "");
     return clean.length > 1 && !GARBAGE_WORDS.has(clean);
   });
@@ -131,7 +190,8 @@ function detectHallucination(text) {
     reason: "ok",
     cleanText: cleanWords.join(" "),
     garbageRatio: Math.round(garbageRatio * 100),
-    diversity: Math.round(diversity * 100)
+    diversity: Math.round(diversity * 100),
+    avgProb: +avgProb.toFixed(3)
   };
 }
 
@@ -299,8 +359,13 @@ async function runPythonScript(scriptPath, audioFilePath, jsonArgs) {
         console.error("[CarnaticSegmenter] Empty stdout from Python");
         return resolve({ error: "Empty stdout", segments: [], pitchFrames: [], chroma: new Array(12).fill(0) });
       }
+      // Sanitize Python NaN/Infinity/-Infinity which are not valid JSON
+      const sanitizedOut = outStr
+        .replace(/: NaN/g, ': null')
+        .replace(/: Infinity/g, ': null')
+        .replace(/: -Infinity/g, ': null');
       try {
-        const result = JSON.parse(outStr);
+        const result = JSON.parse(sanitizedOut);
         if (result.error) {
           console.error("[CarnaticSegmenter] Analysis error:", result.error);
           return resolve({ ...result, segments: result.segments || [], pitchFrames: result.pitchFrames || [], chroma: result.chroma || new Array(12).fill(0) });
@@ -337,12 +402,14 @@ async function analyzeCarnaticAudio(pcmFilePath, sampleRate, totalDuration, opti
 function assignTranscriptionToSegments(transcription, segments) {
   if (!transcription?.words || !Array.isArray(segments)) return segments || [];
 
-  // First, filter hallucinated words
+  // Filter hallucinated words + low-confidence words
   const cleanWords = (transcription.words || []).filter(w => {
     if (!w || !w.word) return false;
     const word = w.word.trim().toLowerCase();
     // Skip pure garbage single-syllable words
     if (word.length <= 2 && GARBAGE_WORDS.has(word)) return false;
+    // Skip very low confidence words (< 0.3 probability)
+    if (typeof w.prob === "number" && w.prob < 0.3) return false;
     return true;
   });
 

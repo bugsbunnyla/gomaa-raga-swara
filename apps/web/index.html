@@ -1,612 +1,675 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GoMaa Raga Vidya v3</title>
-<style>
-:root { --bg:#0f0f1a; --panel:#1a1a2e; --accent:#e94560; --accent2:#0f3460; --text:#eaeaea; --muted:#a0a0b0; --success:#4ecca3; --warn:#f4d03f; --border:#2a2a40; }
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-header { background:linear-gradient(135deg,var(--accent2),var(--accent)); padding:1.5rem 2rem; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
-header h1 { font-size:1.8rem; margin-bottom:0.3rem; }
-header p { opacity:0.9; font-size:0.95rem; }
-.container { max-width:1200px; margin:0 auto; padding:1.5rem; }
-.wizard { display:flex; justify-content:center; gap:0.5rem; margin:1.5rem 0; flex-wrap:wrap; }
-.step-btn { background:var(--panel); border:2px solid var(--border); color:var(--muted); padding:0.6rem 1.2rem; border-radius:2rem; cursor:pointer; font-size:0.9rem; transition:all 0.3s; display:flex; align-items:center; gap:0.4rem; }
-.step-btn.active { border-color:var(--accent); color:var(--text); background:var(--accent2); }
-.step-btn.done { border-color:var(--success); color:var(--success); }
-.step-btn:hover:not(.active) { border-color:var(--accent); color:var(--text); }
-.panel { background:var(--panel); border-radius:12px; padding:1.5rem; margin-bottom:1rem; border:1px solid var(--border); animation:fadeIn 0.4s ease; }
-@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-.panel h2 { color:var(--accent); margin-bottom:1rem; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem; }
-.input-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
-.input-card { background:var(--bg); border:2px dashed var(--border); border-radius:10px; padding:1.5rem; text-align:center; cursor:pointer; transition:all 0.3s; }
-.input-card:hover { border-color:var(--accent); background:rgba(233,69,96,0.05); }
-.input-card .icon { font-size:2rem; margin-bottom:0.5rem; }
-.input-card h3 { font-size:1rem; margin-bottom:0.3rem; }
-.input-card p { font-size:0.8rem; color:var(--muted); }
-.input-card input[type="file"] { display:none; }
-.url-input { display:flex; gap:0.5rem; margin-top:0.5rem; }
-.url-input input { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.6rem 1rem; border-radius:6px; font-size:0.9rem; }
-.btn { background:var(--accent); color:white; border:none; padding:0.6rem 1.2rem; border-radius:6px; cursor:pointer; font-size:0.9rem; transition:opacity 0.2s; }
-.btn:hover { opacity:0.85; }
-.btn:disabled { opacity:0.5; cursor:not-allowed; }
-.btn-secondary { background:var(--accent2); }
-.progress-container { display:none; margin:1rem 0; }
-.progress-bar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; }
-.progress-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--success)); width:0%; transition:width 0.5s ease; border-radius:4px; }
-.progress-steps { display:flex; justify-content:space-between; margin-top:0.5rem; font-size:0.75rem; color:var(--muted); }
-.progress-steps span.active { color:var(--accent); font-weight:bold; }
-.progress-steps span.done { color:var(--success); }
-.results { display:none; }
-.result-nav { display:flex; gap:0.3rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
-.result-nav button { background:transparent; border:1px solid var(--border); color:var(--muted); padding:0.4rem 0.9rem; border-radius:6px; cursor:pointer; white-space:nowrap; font-size:0.85rem; }
-.result-nav button.active { background:var(--accent); color:white; border-color:var(--accent); }
-.result-nav button:hover:not(.active) { border-color:var(--accent); color:var(--text); }
-.result-tab { display:none; }
-.result-tab.active { display:block; animation:fadeIn 0.3s ease; }
-.info-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; }
-.info-card { background:var(--bg); border-radius:8px; padding:1rem; border-left:3px solid var(--accent); }
-.info-card h4 { font-size:0.75rem; text-transform:uppercase; color:var(--muted); margin-bottom:0.3rem; }
-.info-card .value { font-size:1.1rem; font-weight:600; }
-.info-card .sub { font-size:0.8rem; color:var(--muted); margin-top:0.2rem; }
-.notation-box { background:var(--bg); border-radius:8px; padding:1rem; font-family:'Courier New',monospace; font-size:0.95rem; line-height:1.8; overflow-x:auto; white-space:pre-wrap; border:1px solid var(--border); }
-.swara { color:#4ecca3; font-weight:bold; }
-.tala-mark { color:var(--warn); }
-.pause { color:var(--muted); }
-.transcription-text { background:var(--bg); border-radius:8px; padding:1rem; line-height:1.7; border:1px solid var(--border); max-height:300px; overflow-y:auto; }
-.word-tag { display:inline-block; background:var(--accent2); padding:0.15rem 0.4rem; border-radius:4px; margin:0.1rem; font-size:0.85rem; }
-.word-tag .time { font-size:0.7rem; color:var(--muted); }
-.sheet-preview { background:white; color:black; border-radius:8px; padding:1rem; overflow-x:auto; font-family:'Times New Roman',serif; }
-.saved-list { display:grid; gap:0.5rem; }
-.saved-item { background:var(--bg); padding:0.8rem 1rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; border:1px solid var(--border); transition:all 0.2s; }
-.saved-item:hover { border-color:var(--accent); }
-.saved-item .title { font-weight:600; }
-.saved-item .meta { font-size:0.8rem; color:var(--muted); }
-.error-box { background:rgba(233,69,96,0.1); border:1px solid var(--accent); color:var(--accent); padding:1rem; border-radius:8px; margin:1rem 0; }
-.language-select { background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.4rem 0.8rem; border-radius:6px; font-size:0.85rem; margin-left:0.5rem; }
-@media(max-width:600px){ .wizard{gap:0.3rem} .step-btn{padding:0.4rem 0.8rem;font-size:0.8rem} .container{padding:1rem} }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoMaa Raga Vidya v3.1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f0f1a; color: #e0e0ff; min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header { text-align: center; padding: 40px 0; border-bottom: 1px solid #2a2a4a; margin-bottom: 30px; }
+    h1 { font-size: 2.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #8888aa; margin-top: 8px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 2px solid #2a2a4a; flex-wrap: wrap; }
+    .tab { padding: 12px 24px; cursor: pointer; border: none; background: transparent; color: #8888aa; font-size: 1rem; transition: all 0.3s; border-bottom: 2px solid transparent; }
+    .tab.active { color: #667eea; border-bottom-color: #667eea; }
+    .tab:hover { color: #a0a0cc; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Import method tabs */
+    .import-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .import-tab { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid #2a2a4a; background: #1a1a2e; color: #8888aa; cursor: pointer; transition: all 0.3s; text-align: center; font-size: 0.95rem; }
+    .import-tab:hover { border-color: #667eea; color: #a0a0cc; }
+    .import-tab.active { border-color: #667eea; background: rgba(102,126,234,0.1); color: #667eea; }
+    .import-tab .icon { font-size: 1.4rem; display: block; margin-bottom: 6px; }
+
+    .upload-area { border: 2px dashed #3a3a6a; border-radius: 16px; padding: 60px 40px; text-align: center; transition: all 0.3s; cursor: pointer; }
+    .upload-area:hover, .upload-area.dragover { border-color: #667eea; background: rgba(102,126,234,0.05); }
+    .upload-icon { font-size: 3rem; margin-bottom: 16px; }
+    .upload-text { color: #8888aa; }
+    .upload-text strong { color: #e0e0ff; }
+    input[type="file"] { display: none; }
+
+    .url-input-group { display: flex; gap: 12px; margin-bottom: 16px; }
+    .url-input-group input { flex: 1; padding: 14px 18px; border-radius: 12px; border: 1px solid #3a3a6a; background: #0f0f1a; color: #e0e0ff; font-size: 1rem; }
+    .url-input-group input:focus { outline: none; border-color: #667eea; }
+    .url-input-group button { padding: 14px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .url-input-group button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102,126,234,0.3); }
+    .url-input-group button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .recording-area { text-align: center; padding: 40px; }
+    .record-btn { width: 120px; height: 120px; border-radius: 50%; border: 4px solid #3a3a6a; background: #1a1a2e; color: #e0e0ff; font-size: 2.5rem; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .record-btn:hover { border-color: #f44336; transform: scale(1.05); }
+    .record-btn.recording { background: #f44336; border-color: #f44336; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    .record-status { color: #8888aa; font-size: 1rem; margin-top: 12px; }
+    .record-timer { font-size: 2rem; font-weight: 700; color: #667eea; margin-top: 8px; font-variant-numeric: tabular-nums; }
+    .record-waveform { height: 60px; margin: 20px auto; max-width: 400px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .record-waveform span { width: 4px; background: #667eea; border-radius: 2px; transition: height 0.1s; }
+
+    .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+    .option-group { background: #1a1a2e; padding: 16px; border-radius: 12px; border: 1px solid #2a2a4a; }
+    .option-group label { display: block; margin-bottom: 8px; color: #a0a0cc; font-size: 0.9rem; }
+    .option-group select, .option-group input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #3a3a6a; background: #0f0f1a; color: #e0e0ff; font-size: 0.95rem; }
+    .btn { padding: 14px 32px; border-radius: 12px; border: none; font-size: 1rem; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102,126,234,0.3); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .progress { margin: 24px 0; display: none; }
+    .progress.active { display: block; }
+    .progress-bar { height: 8px; background: #1a1a2e; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s; border-radius: 4px; }
+    .progress-text { text-align: center; margin-top: 12px; color: #8888aa; font-size: 0.9rem; }
+    .result { background: #1a1a2e; border-radius: 16px; padding: 24px; margin-top: 24px; border: 1px solid #2a2a4a; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .result-card { background: #0f0f1a; padding: 20px; border-radius: 12px; border: 1px solid #2a2a4a; }
+    .result-card h3 { color: #667eea; margin-bottom: 12px; font-size: 1.1rem; }
+    .result-card p { color: #c0c0e0; line-height: 1.6; font-size: 0.95rem; }
+    .result-card .meta { color: #8888aa; font-size: 0.85rem; margin-top: 8px; }
+    .swara-display { font-family: 'Courier New', monospace; background: #0a0a1a; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; color: #a0d0ff; font-size: 1rem; line-height: 1.8; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-right: 8px; }
+    .badge-high { background: rgba(76,175,80,0.2); color: #4caf50; }
+    .badge-medium { background: rgba(255,152,0,0.2); color: #ff9800; }
+    .badge-low { background: rgba(244,67,54,0.2); color: #f44336; }
+    .lyrics-section { margin: 16px 0; padding: 16px; background: #0f0f1a; border-radius: 8px; border-left: 3px solid #667eea; }
+    .lyrics-section h4 { color: #667eea; margin-bottom: 8px; font-size: 1rem; }
+    .lyrics-section p { color: #c0c0e0; line-height: 1.8; font-size: 0.95rem; }
+    .lyrics-section .telugu { color: #a0a0cc; font-style: italic; margin-top: 4px; }
+    .error { background: rgba(244,67,54,0.1); border: 1px solid rgba(244,67,54,0.3); color: #f44336; padding: 16px; border-radius: 12px; margin-top: 16px; }
+    .warning { background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.3); color: #ff9800; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 0.9rem; }
+    .info-box { background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.2); padding: 16px; border-radius: 12px; margin-bottom: 20px; color: #a0b0ff; font-size: 0.9rem; }
+    .info-box strong { color: #667eea; }
+    @media (max-width: 768px) {
+      h1 { font-size: 1.8rem; }
+      .upload-area { padding: 40px 20px; }
+      .import-tabs { flex-direction: column; }
+      .url-input-group { flex-direction: column; }
+    }
+  </style>
 </head>
 <body>
-<header><h1>🎼 GoMaa Raga Vidya v3</h1><p>Carnatic Music Analyzer — Raga · Tala · Swara · Transcription · Sheet Music</p></header>
-<div class="container">
-<div class="wizard">
-  <button class="step-btn active" id="wiz-step1" onclick="goStep(1)"><span>1</span> Input Audio</button>
-  <button class="step-btn" id="wiz-step2" onclick="goStep(2)"><span>2</span> Processing</button>
-  <button class="step-btn" id="wiz-step3" onclick="goStep(3)"><span>3</span> Results</button>
-  <button class="step-btn" id="wiz-step4" onclick="goStep(4)"><span>4</span> Saved</button>
-</div>
+  <div class="container">
+    <header>
+      <h1>🎵 GoMaa Raga Vidya</h1>
+      <p class="subtitle">Carnatic Music Analysis & Raga Recognition v3.1</p>
+    </header>
 
-<div id="step1" class="panel">
-  <h2>📥 Step 1: Choose Audio Source</h2>
-  <div style="margin-bottom:1rem;">
-    <label style="color:var(--muted);font-size:0.9rem;">Transcription Language:</label>
-    <select id="langSelect" class="language-select"><option value="te">Telugu (te)</option><option value="ta">Tamil (ta)</option><option value="sa">Sanskrit (sa)</option><option value="hi">Hindi (hi)</option><option value="kn">Kannada (kn)</option><option value="ml">Malayalam (ml)</option><option value="en">English (en)</option></select>
-    <label style="color:var(--muted);font-size:0.9rem;margin-left:1rem;">Model:</label>
-    <select id="modelSelect" class="language-select"><option value="base">Base (fast)</option><option value="small">Small (better)</option><option value="medium">Medium (best)</option></select>
-  </div>
-  <div class="input-grid">
-    <div class="input-card" onclick="document.getElementById('fileInput').click()">
-      <div class="icon">📁</div><h3>Upload File</h3><p>MP3, WAV, FLAC, OGG, M4A, MP4, AVI, MOV, WEBM, MKV</p>
-      <input type="file" id="fileInput" accept="audio/*,video/*" onchange="handleFile(this.files[0])">
+    <div class="tabs">
+      <button class="tab active" data-tab="upload">📤 Import</button>
+      <button class="tab" data-tab="processing">⚙️ Processing</button>
+      <button class="tab" data-tab="results">📊 Results</button>
+      <button class="tab" data-tab="lyrics">📝 Lyrics</button>
+      <button class="tab" data-tab="notation">🎼 Notation</button>
     </div>
-    <div class="input-card" id="recordCard" onclick="toggleRecording()">
-      <div class="icon" id="recordIcon">🎙️</div><h3 id="recordText">Live Recording</h3><p id="recordDesc">Click to start recording from microphone</p>
-    </div>
-    <div class="input-card">
-      <div class="icon">📺</div><h3>YouTube / URL</h3><p>Paste a link to audio or video</p>
-      <div class="url-input" style="margin-top:0.8rem;">
-        <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... or direct audio URL">
-        <button class="btn" onclick="handleUrl()">Analyze</button>
+
+    <div class="panel active" id="upload-panel">
+      <!-- Import Method Selector -->
+      <div class="import-tabs">
+        <button class="import-tab active" data-import="file">
+          <span class="icon">📁</span>
+          Upload File
+        </button>
+        <button class="import-tab" data-import="youtube">
+          <span class="icon">▶️</span>
+          YouTube URL
+        </button>
+        <button class="import-tab" data-import="external">
+          <span class="icon">🌐</span>
+          External URL
+        </button>
+        <button class="import-tab" data-import="record">
+          <span class="icon">🎙️</span>
+          Live Record
+        </button>
       </div>
-    </div>
-  </div>
-</div>
 
-<div id="step2" class="panel progress-container">
-  <h2>⚙️ Step 2: Analyzing Audio...</h2>
-  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-  <div class="progress-steps">
-    <span id="ps-decode">🔧 Decoding</span><span id="ps-pitch">🎵 Pitch/Scale</span><span id="ps-beat">🥁 Beat/Tala</span>
-    <span id="ps-raga">🎼 Raga Detect</span><span id="ps-trans">📝 Transcribe</span><span id="ps-swara">🎹 Swaras</span>
-    <span id="ps-sheet">📜 Sheet Music</span><span id="ps-save">💾 Saving</span>
-  </div>
-  <div id="processingStatus" style="margin-top:1rem;color:var(--muted);font-size:0.9rem;text-align:center;">Initializing...</div>
-</div>
-
-<div id="step3" class="results">
-  <div class="panel">
-    <h2>✅ Step 3: Analysis Complete</h2>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-      <div><strong id="resFileName"></strong><span id="resRagaBadge" style="background:var(--accent);color:white;padding:0.2rem 0.6rem;border-radius:1rem;font-size:0.8rem;margin-left:0.5rem;"></span></div>
-      <div>
-        <button class="btn btn-secondary" onclick="downloadSheet()">📥 Sheet XML</button>
-        <button class="btn btn-secondary" onclick="downloadMidi()">🎵 MIDI</button>
-        <button class="btn" onclick="newAnalysis()">🔄 New Analysis</button>
-      </div>
-    </div>
-    <div class="result-nav">
-      <button class="active" onclick="showTab('tab-raga')">🎼 Raga</button>
-      <button onclick="showTab('tab-audio')">🎵 Audio Analysis</button>
-      <button onclick="showTab('tab-trans')">📝 Transcription</button>
-      <button onclick="showTab('tab-swara')">🎹 Swaras & Sahityam</button>
-      <button onclick="showTab('tab-lyrics')">📖 Lyrics</button>
-      <button onclick="showTab('tab-sheet')">📜 Sheet Music</button>
-      <button onclick="showTab('tab-inst')">🎸 Instruments</button>
-    </div>
-
-    <div id="tab-raga" class="result-tab active">
-      <div class="info-grid">
-        <div class="info-card"><h4>Raga</h4><div class="value" id="ragaName">-</div><div class="sub" id="ragaType">-</div></div>
-        <div class="info-card"><h4>Melakarta #</h4><div class="value" id="ragaNumber">-</div><div class="sub" id="ragaChakra">-</div></div>
-        <div class="info-card"><h4>Confidence</h4><div class="value" id="ragaConfidence">-</div><div class="sub" id="ragaSource">-</div></div>
-        <div class="info-card"><h4>Mood</h4><div class="value" id="ragaMood">-</div></div>
-        <div class="info-card"><h4>Ārohaṇam</h4><div class="value" id="ragaAroha" style="font-size:0.95rem;">-</div></div>
-        <div class="info-card"><h4>Avarohaṇam</h4><div class="value" id="ragaAvaroha" style="font-size:0.95rem;">-</div></div>
-        <div class="info-card"><h4>Detected Ārohaṇam</h4><div class="value" id="detAroha" style="font-size:0.9rem;color:var(--success);">-</div></div>
-        <div class="info-card"><h4>Detected Avarohaṇam</h4><div class="value" id="detAvaroha" style="font-size:0.9rem;color:var(--success);">-</div></div>
-      </div>
-      <div style="margin-top:1rem;"><h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Top Candidates</h4><div id="topCandidates"></div></div>
-      <div style="margin-top:1rem;"><h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Gamakas</h4><div id="gamakaList"></div></div>
-    </div>
-
-    <div id="tab-audio" class="result-tab">
-      <div class="info-grid">
-        <div class="info-card"><h4>Detected Scale (semitones)</h4><div class="value" id="detScale">-</div></div>
-        <div class="info-card"><h4>Tempo (BPM)</h4><div class="value" id="detTempo">-</div><div class="sub" id="tempoConf">-</div></div>
-        <div class="info-card"><h4>Tala</h4><div class="value" id="detTala">-</div><div class="sub" id="talaDetail">-</div></div>
-        <div class="info-card"><h4>Pitch Frames</h4><div class="value" id="pitchFrames">-</div></div>
-      </div>
-      <div style="margin-top:1rem;"><h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Chroma Energy Profile</h4>
-        <div id="chromaViz" style="display:flex;gap:0.3rem;height:100px;align-items:flex-end;background:var(--bg);padding:0.5rem;border-radius:8px;"></div>
-        <div style="display:flex;gap:0.3rem;margin-top:0.3rem;font-size:0.75rem;color:var(--muted);justify-content:space-around;">
-          <span>S</span><span>R1</span><span>R2</span><span>R3</span><span>G3</span><span>M1</span><span>M2</span><span>P</span><span>D1</span><span>D2</span><span>D3</span><span>N3</span>
+      <!-- FILE UPLOAD -->
+      <div class="import-panel active" id="import-file">
+        <div class="upload-area" id="dropZone">
+          <div class="upload-icon">📁</div>
+          <p class="upload-text">Drop your Carnatic audio file here or <strong>click to browse</strong></p>
+          <p class="upload-text" style="margin-top:8px;font-size:0.85rem;">Supports MP3, WAV, FLAC, OGG, M4A, AIFF, WEBM</p>
+          <input type="file" id="fileInput" accept="audio/*">
         </div>
       </div>
-      <div style="margin-top:1rem;"><h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Tala Alternatives</h4><div id="talaAlts"></div></div>
+
+      <!-- YOUTUBE URL -->
+      <div class="import-panel" id="import-youtube" style="display:none;">
+        <div class="info-box">
+          <strong>💡 Tip:</strong> Paste a YouTube video URL. The app will extract the audio using yt-dlp. Make sure yt-dlp is installed: <code>pip install yt-dlp</code>
+        </div>
+        <div class="url-input-group">
+          <input type="url" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+          <button id="youtubeAnalyzeBtn" onclick="analyzeUrl('youtube')">Analyze</button>
+        </div>
+      </div>
+
+      <!-- EXTERNAL URL -->
+      <div class="import-panel" id="import-external" style="display:none;">
+        <div class="info-box">
+          <strong>💡 Tip:</strong> Paste a direct link to an audio file (MP3, WAV, etc.). The file will be downloaded and analyzed.
+        </div>
+        <div class="url-input-group">
+          <input type="url" id="externalUrl" placeholder="https://example.com/audio.mp3" autocomplete="off">
+          <button id="externalAnalyzeBtn" onclick="analyzeUrl('external')">Analyze</button>
+        </div>
+      </div>
+
+      <!-- LIVE RECORDING -->
+      <div class="import-panel" id="import-record" style="display:none;">
+        <div class="recording-area">
+          <button class="record-btn" id="recordBtn" onclick="toggleRecording()">🎙️</button>
+          <div class="record-timer" id="recordTimer">00:00</div>
+          <div class="record-status" id="recordStatus">Click to start recording</div>
+          <div class="record-waveform" id="recordWaveform"></div>
+          <div style="margin-top:16px;">
+            <button class="btn btn-primary" id="analyzeRecordingBtn" onclick="analyzeRecording()" disabled>Analyze Recording</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="options">
+        <div class="option-group">
+          <label>🤖 Whisper Model</label>
+          <select id="modelSelect">
+            <option value="small" selected>small (recommended)</option>
+            <option value="base">base (fast)</option>
+            <option value="medium">medium (accurate)</option>
+            <option value="large-v3">large-v3 (best)</option>
+            <option value="turbo">turbo (fastest)</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>🌐 Language</label>
+          <select id="langSelect">
+            <option value="" selected>Auto-detect</option>
+            <option value="te">Telugu</option>
+            <option value="ta">Tamil</option>
+            <option value="sa">Sanskrit</option>
+            <option value="kn">Kannada</option>
+            <option value="ml">Malayalam</option>
+            <option value="hi">Hindi</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="option-group">
+          <label>📊 Analysis Depth</label>
+          <select id="depthSelect">
+            <option value="full" selected>Full (Raga + Tala + Lyrics + Notation)</option>
+            <option value="raga">Raga Only</option>
+            <option value="quick">Quick (Raga + Tala)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:24px;">
+        <button class="btn btn-primary" id="analyzeBtn" disabled>Analyze Audio</button>
+      </div>
+
+      <div class="progress" id="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <p class="progress-text" id="progressText">Ready to analyze...</p>
+      </div>
     </div>
 
-    <div id="tab-trans" class="result-tab">
-      <div class="info-grid" style="margin-bottom:1rem;">
-        <div class="info-card"><h4>Language</h4><div class="value" id="transLang">-</div></div>
-        <div class="info-card"><h4>Confidence</h4><div class="value" id="transConf">-</div></div>
-        <div class="info-card"><h4>Duration</h4><div class="value" id="transDur">-</div></div>
-        <div class="info-card"><h4>Segments</h4><div class="value" id="transSegs">-</div></div>
-      </div>
-      <div id="transcriptionError" class="error-box" style="display:none;"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Full Text</h4>
-      <div class="transcription-text" id="transText"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin:1rem 0 0.5rem;">Word Timestamps</h4>
-      <div id="transWords"></div>
-    </div>
-
-    <div id="tab-swara" class="result-tab">
-      <div class="info-grid" style="margin-bottom:1rem;">
-        <div class="info-card"><h4>Total Swara Frames</h4><div class="value" id="swaraCount">-</div></div>
-        <div class="info-card"><h4>Tala</h4><div class="value" id="swaraTala">-</div></div>
-        <div class="info-card"><h4>Tempo</h4><div class="value" id="swaraTempo">-</div></div>
-      </div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">Sahityam Notation (first 200 notes)</h4>
-      <div class="notation-box" id="swaraNotation"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin:1rem 0 0.5rem;">Pallavi Section</h4>
-      <div class="notation-box" id="pallaviNotation"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin:1rem 0 0.5rem;">Anupallavi Section</h4>
-      <div class="notation-box" id="anupallaviNotation"></div>
-    </div>
-
-    <div id="tab-lyrics" class="result-tab">
-      <div class="info-grid" style="margin-bottom:1rem;">
-        <div class="info-card"><h4>Raga</h4><div class="value" id="lyrRaga">-</div></div>
-        <div class="info-card"><h4>Tala</h4><div class="value" id="lyrTala">-</div></div>
-        <div class="info-card"><h4>Tempo</h4><div class="value" id="lyrTempo">-</div></div>
-      </div>
-      <div style="display:grid;gap:1rem;">
-        <div><h4 style="color:var(--accent);margin-bottom:0.5rem;">🎵 Pallavi</h4><div class="transcription-text" id="lyrPallavi"></div></div>
-        <div><h4 style="color:var(--accent);margin-bottom:0.5rem;">🎵 Anupallavi</h4><div class="transcription-text" id="lyrAnupallavi"></div></div>
-        <div><h4 style="color:var(--accent);margin-bottom:0.5rem;">🎵 Charanam</h4><div class="transcription-text" id="lyrCharanam"></div></div>
-        <div><h4 style="color:var(--accent);margin-bottom:0.5rem;">📝 Full Sahityam</h4><div class="transcription-text" id="lyrSahityam"></div></div>
+    <div class="panel" id="processing-panel">
+      <div class="result">
+        <h3 style="color:#667eea;margin-bottom:16px;">⚙️ Processing Status</h3>
+        <div id="processingStatus">
+          <p style="color:#8888aa;">Upload an audio file, paste a URL, or record to begin analysis...</p>
+        </div>
       </div>
     </div>
 
-    <div id="tab-sheet" class="result-tab">
-      <div style="margin-bottom:1rem;">
-        <button class="btn" onclick="downloadSheet()">📥 Download MusicXML</button>
-        <button class="btn btn-secondary" onclick="downloadMidi()">🎵 Download MIDI</button>
-      </div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">MusicXML Preview</h4>
-      <div class="sheet-preview" id="sheetPreview"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin:1rem 0 0.5rem;">Stems / Parts</h4>
-      <div id="stemsList"></div>
+    <div class="panel" id="results-panel">
+      <div id="resultsContainer"></div>
     </div>
 
-    <div id="tab-inst" class="result-tab">
-      <div class="info-grid" style="margin-bottom:1rem;">
-        <div class="info-card"><h4>Primary Instrument</h4><div class="value" id="instPrimary">-</div></div>
-        <div class="info-card"><h4>Detected Gamakas</h4><div class="value" id="instGamakas">-</div></div>
+    <div class="panel" id="lyrics-panel">
+      <div id="lyricsContainer">
+        <p style="color:#8888aa;text-align:center;padding:40px;">No lyrics available yet. Import and analyze audio first.</p>
       </div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">All Detected Instruments</h4>
-      <div id="instList"></div>
-      <h4 style="color:var(--muted);font-size:0.85rem;margin:1rem 0 0.5rem;">Gamaka Analysis</h4>
-      <div class="transcription-text" id="gamakaDetail"></div>
+    </div>
+
+    <div class="panel" id="notation-panel">
+      <div id="notationContainer">
+        <p style="color:#8888aa;text-align:center;padding:40px;">No notation available yet. Import and analyze audio first.</p>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="step4" class="panel" style="display:none;">
-  <h2>💾 Step 4: Saved Analyses</h2>
-  <p style="color:var(--muted);margin-bottom:1rem;font-size:0.9rem;">Click any item to reload and verify the complete analysis.</p>
-  <div class="saved-list" id="savedList"></div>
-  <div id="savedDetail" style="margin-top:1rem;display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-      <h3 id="savedTitle"></h3><button class="btn btn-secondary" onclick="closeSavedDetail()">Close</button>
-    </div>
-    <pre id="savedJson" style="background:var(--bg);padding:1rem;border-radius:8px;overflow-x:auto;font-size:0.8rem;max-height:400px;"></pre>
-  </div>
-</div>
-</div>
+  <script>
+    const API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:3000' : '';
+    let currentFile = null;
+    let currentResult = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    let audioContext = null;
+    let analyser = null;
+    let animationId = null;
 
-<script>
-let currentResult = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-let currentStep = 1;
+    // ── TAB NAVIGATION ────────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
+      });
+    });
 
-function goStep(n) {
-  currentStep = n;
-  document.querySelectorAll('.step-btn').forEach((b, i) => {
-    b.classList.remove('active', 'done');
-    if (i + 1 < n) b.classList.add('done');
-    if (i + 1 === n) b.classList.add('active');
-  });
-  document.getElementById('step1').style.display = n === 1 ? 'block' : 'none';
-  document.getElementById('step2').style.display = n === 2 ? 'block' : 'none';
-  document.getElementById('step3').style.display = n === 3 ? 'block' : 'none';
-  document.getElementById('step4').style.display = n === 4 ? 'block' : 'none';
-  if (n === 4) loadSavedList();
-}
+    // ── IMPORT METHOD TABS ────────────────────────────────────────────
+    document.querySelectorAll('.import-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.import-panel').forEach(p => p.style.display = 'none');
+        tab.classList.add('active');
+        document.getElementById('import-' + tab.dataset.import).style.display = 'block';
+      });
+    });
 
-function setProgress(pct, stepName) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  const steps = ['decode','pitch','beat','raga','trans','swara','sheet','save'];
-  const idx = steps.indexOf(stepName);
-  steps.forEach((s, i) => {
-    const el = document.getElementById('ps-' + s);
-    el.classList.remove('active', 'done');
-    if (i < idx) el.classList.add('done');
-    if (i === idx) el.classList.add('active');
-  });
-}
+    // ── FILE UPLOAD ───────────────────────────────────────────────────
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
 
-async function handleFile(file) {
-  if (!file) return;
-  goStep(2);
-  setProgress(5, 'decode');
-  document.getElementById('processingStatus').textContent = 'Uploading ' + file.name + '...';
-  const form = new FormData();
-  form.append('audio', file);
-  try {
-    const res = await fetch('/api/recognize/upload', {
-      method: 'POST',
-      body: form,
-      headers: {
-        'x-language': document.getElementById('langSelect').value,
-        'x-model': document.getElementById('modelSelect').value
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length) handleFile(files[0]);
+    });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+    function handleFile(file) {
+      currentFile = file;
+      dropZone.innerHTML = `<div class="upload-icon">✅</div><p class="upload-text"><strong>${file.name}</strong></p><p class="upload-text" style="font-size:0.85rem;">${(file.size/1024/1024).toFixed(2)} MB</p>`;
+      analyzeBtn.disabled = false;
+      analyzeBtn.onclick = () => analyzeFile(file);
+    }
+
+    // ── URL ANALYSIS ──────────────────────────────────────────────────
+    async function analyzeUrl(type) {
+      const urlInput = document.getElementById(type + 'Url');
+      const url = urlInput.value.trim();
+      if (!url) {
+        alert('Please enter a URL');
+        return;
       }
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    currentResult = data;
-    displayResults(data);
-    goStep(3);
-  } catch (e) {
-    document.getElementById('processingStatus').innerHTML = '<div class="error-box">Error: ' + e.message + '</div>';
-    setTimeout(() => goStep(1), 3000);
-  }
-}
+      if (type === 'youtube' && !url.match(/youtube\.com|youtu\.be/)) {
+        alert('Please enter a valid YouTube URL');
+        return;
+      }
 
-async function handleUrl() {
-  const url = document.getElementById('urlInput').value.trim();
-  if (!url) return alert('Please enter a URL');
-  goStep(2);
-  setProgress(5, 'decode');
-  document.getElementById('processingStatus').textContent = 'Fetching from URL...';
-  try {
-    const res = await fetch('/api/recognize/url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url,
-        language: document.getElementById('langSelect').value,
-        model: document.getElementById('modelSelect').value
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    currentResult = data;
-    displayResults(data);
-    goStep(3);
-  } catch (e) {
-    document.getElementById('processingStatus').innerHTML = '<div class="error-box">Error: ' + e.message + '</div>';
-    setTimeout(() => goStep(1), 3000);
-  }
-}
+      const btn = document.getElementById(type + 'AnalyzeBtn');
+      btn.disabled = true;
+      startProgress();
 
-async function toggleRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    document.getElementById('recordIcon').textContent = '🎙️';
-    document.getElementById('recordText').textContent = 'Live Recording';
-    document.getElementById('recordDesc').textContent = 'Click to start recording from microphone';
-    return;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    recordedChunks = [];
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-      goStep(2);
-      setProgress(5, 'decode');
-      document.getElementById('processingStatus').textContent = 'Processing recording...';
       try {
-        const res = await fetch('/api/recognize/buffer', {
-          method: 'POST',
-          body: blob,
-          headers: {
-            'Content-Type': 'audio/webm',
-            'x-filename': 'recording.webm',
-            'x-language': document.getElementById('langSelect').value,
-            'x-model': document.getElementById('modelSelect').value
+        updateProgress(20, 'Downloading audio...');
+        const formData = new FormData();
+        formData.append('url', url);
+        formData.append('model', document.getElementById('modelSelect').value);
+        formData.append('language', document.getElementById('langSelect').value);
+
+        updateProgress(50, 'Analyzing audio...');
+        const res = await fetch(`${API_BASE}/api/recognize`, { method: 'POST', body: formData });
+        updateProgress(80, 'Processing results...');
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Analysis failed');
+        }
+
+        currentResult = await res.json();
+        updateProgress(100, 'Complete!');
+        displayAll(currentResult);
+
+        setTimeout(() => {
+          document.querySelector('[data-tab="results"]').click();
+        }, 500);
+      } catch (e) {
+        updateProgress(0, 'Error: ' + e.message);
+        document.getElementById('resultsContainer').innerHTML = `<div class="error">❌ ${e.message}</div>`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── LIVE RECORDING ────────────────────────────────────────────────
+    async function toggleRecording() {
+      const btn = document.getElementById('recordBtn');
+      const status = document.getElementById('recordStatus');
+      const timer = document.getElementById('recordTimer');
+      const analyzeRecBtn = document.getElementById('analyzeRecordingBtn');
+
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Stop recording
+        mediaRecorder.stop();
+        btn.classList.remove('recording');
+        status.textContent = 'Recording stopped. Click Analyze to process.';
+        clearInterval(recordingTimer);
+        cancelAnimationFrame(animationId);
+        if (audioContext) audioContext.close();
+        analyzeRecBtn.disabled = false;
+        return;
+      }
+
+      // Start recording
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+          currentFile = new File([blob], 'live_recording.webm', { type: 'audio/webm' });
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start(100);
+        btn.classList.add('recording');
+        status.textContent = 'Recording...';
+        recordingStartTime = Date.now();
+
+        recordingTimer = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+          const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+          const secs = String(elapsed % 60).padStart(2, '0');
+          timer.textContent = `${mins}:${secs}`;
+        }, 1000);
+
+        // Visualizer
+        const waveform = document.getElementById('recordWaveform');
+        waveform.innerHTML = '';
+        for (let i = 0; i < 50; i++) {
+          const bar = document.createElement('span');
+          bar.style.height = '4px';
+          waveform.appendChild(bar);
+        }
+        const bars = waveform.querySelectorAll('span');
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        function draw() {
+          animationId = requestAnimationFrame(draw);
+          analyser.getByteFrequencyData(dataArray);
+          for (let i = 0; i < bars.length; i++) {
+            const value = dataArray[Math.floor(i * dataArray.length / bars.length)];
+            bars[i].style.height = Math.max(4, value / 2) + 'px';
+          }
+        }
+        draw();
+
+      } catch (e) {
+        alert('Microphone access denied or not available: ' + e.message);
+      }
+    }
+
+    function analyzeRecording() {
+      if (!currentFile) {
+        alert('No recording available. Please record first.');
+        return;
+      }
+      analyzeFile(currentFile);
+    }
+
+    // ── FILE ANALYSIS ─────────────────────────────────────────────────
+    async function analyzeFile(file) {
+      analyzeBtn.disabled = true;
+      startProgress();
+
+      try {
+        updateProgress(10, 'Uploading audio...');
+        const formData = new FormData();
+        formData.append('audio', file);
+        formData.append('model', document.getElementById('modelSelect').value);
+        formData.append('language', document.getElementById('langSelect').value);
+
+        updateProgress(30, 'Analyzing audio...');
+        const res = await fetch(`${API_BASE}/api/recognize`, { method: 'POST', body: formData });
+        updateProgress(70, 'Processing results...');
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Analysis failed');
+        }
+
+        currentResult = await res.json();
+        updateProgress(100, 'Complete!');
+        displayAll(currentResult);
+
+        setTimeout(() => {
+          document.querySelector('[data-tab="results"]').click();
+        }, 500);
+      } catch (e) {
+        updateProgress(0, 'Error: ' + e.message);
+        document.getElementById('resultsContainer').innerHTML = `<div class="error">❌ ${e.message}</div>`;
+      } finally {
+        analyzeBtn.disabled = false;
+      }
+    }
+
+    // ── PROGRESS ──────────────────────────────────────────────────────
+    function startProgress() {
+      document.getElementById('progress').classList.add('active');
+    }
+    function updateProgress(pct, text) {
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressText').textContent = text;
+    }
+
+    // ── DISPLAY ALL RESULTS ───────────────────────────────────────────
+    function displayAll(data) {
+      displayResults(data);
+      displayLyrics(data);
+      displayNotation(data);
+      displayProcessing(data);
+    }
+
+    function displayResults(data) {
+      const confBadge = data.confidence > 0.75 ? 'badge-high' : data.confidence > 0.50 ? 'badge-medium' : 'badge-low';
+      const confText = data.confidenceLabel || (data.confidence > 0.75 ? 'High' : data.confidence > 0.50 ? 'Medium' : 'Low');
+      const confPct = Math.round((data.confidence || 0) * 100);
+
+      document.getElementById('resultsContainer').innerHTML = `
+        <div class="result">
+          <div class="result-grid">
+            <div class="result-card">
+              <h3>🎵 Raga</h3>
+              <p style="font-size:1.4rem;font-weight:700;color:#667eea;">${data.raga || 'Unknown'}</p>
+              <p>Melakarta #${data.ragaNumber || '—'} ${data.chakra ? '• ' + data.chakra : ''}</p>
+              <div class="meta"><span class="badge ${confBadge}">${confText} (${confPct}%)</span> Source: ${data.detectionSource || 'unknown'}</div>
+              ${data.ragamalika?.isRagamalika ? '<div class="warning">⚠️ Detected as Rāgamālika</div>' : ''}
+            </div>
+            <div class="result-card">
+              <h3>🥁 Tala</h3>
+              <p style="font-size:1.2rem;font-weight:600;">${data.tala || 'Unknown'}</p>
+              <p>${data.talaDetail?.angaStr || ''}</p>
+              <div class="meta">Tempo: ${data.tempo || '—'} BPM • Confidence: ${Math.round((data.tempoConfidence||0)*100)}%</div>
+            </div>
+            <div class="result-card">
+              <h3>🎭 Mood & Gamakas</h3>
+              <p>${data.mood || 'Unknown'}</p>
+              <div class="meta">${(data.gamakas||[]).join(', ') || '—'}</div>
+            </div>
+            <div class="result-card">
+              <h3>🎹 Scale</h3>
+              <p><strong>Ārohaṇam:</strong> ${data.aroha || '—'}</p>
+              <p><strong>Avarohaṇam:</strong> ${data.avaroha || '—'}</p>
+              ${data.detectedAroha ? `<div class="meta">Detected Ārohaṇam: ${data.detectedAroha}</div>` : ''}
+              ${data.detectedAvaroha ? `<div class="meta">Detected Avarohaṇam: ${data.detectedAvaroha}</div>` : ''}
+            </div>
+            <div class="result-card">
+              <h3>🎸 Instruments</h3>
+              <p>${(data.instruments||[]).map(i=>i.label).join(', ') || 'Unknown'}</p>
+            </div>
+            <div class="result-card">
+              <h3>⏱️ Duration</h3>
+              <p>${data.duration ? Math.floor(data.duration/60)+':'+String(Math.floor(data.duration%60)).padStart(2,'0') : '—'}</p>
+              <div class="meta">Processing: ${data.processingTime || '—'}ms</div>
+            </div>
+          </div>
+          ${data.topCandidates?.length ? `
+          <div style="margin-top:20px;">
+            <h4 style="color:#667eea;margin-bottom:12px;">🏆 Top Candidates</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              ${data.topCandidates.slice(0,5).map((c,i)=>`<span class="badge" style="background:rgba(102,126,234,0.15);color:#a0b0ff;">#${i+1} ${c.name} (${Math.round((c.score||0)*100)}%)</span>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      `;
+    }
+
+    function displayLyrics(data) {
+      const lyrics = data.lyrics || {};
+      const trans = data.transcription || {};
+      const container = document.getElementById('lyricsContainer');
+
+      let html = '';
+
+      if (lyrics.isHallucinated) {
+        html += `<div class="warning">⚠️ Transcription was detected as hallucinated (${lyrics.hallucinationReason}). Using composition database fallback.</div>`;
+      }
+
+      if (lyrics.source === 'composition_db') {
+        html += `<div class="badge badge-high" style="margin-bottom:16px;">✅ Verified Composition Database</div>`;
+      } else if (lyrics.source === 'raga_generic') {
+        html += `<div class="badge badge-medium" style="margin-bottom:16px;">📖 Raga-based Generic Lyrics</div>`;
+      }
+
+      if (lyrics.pallavi) {
+        html += `<div class="lyrics-section"><h4>🎵 Pallavi</h4><p>${lyrics.pallavi}</p>${lyrics.telugu?.pallavi ? `<p class="telugu">${lyrics.telugu.pallavi}</p>` : ''}</div>`;
+      }
+      if (lyrics.anupallavi) {
+        html += `<div class="lyrics-section"><h4>🎵 Anupallavi</h4><p>${lyrics.anupallavi}</p>${lyrics.telugu?.anupallavi ? `<p class="telugu">${lyrics.telugu.anupallavi}</p>` : ''}</div>`;
+      }
+      if (lyrics.charanam) {
+        html += `<div class="lyrics-section"><h4>🎵 Charanam</h4><p>${lyrics.charanam}</p>${lyrics.telugu?.charanam ? `<p class="telugu">${lyrics.telugu.charanam}</p>` : ''}</div>`;
+      }
+      if (lyrics.sahityam) {
+        html += `<div class="lyrics-section"><h4>📝 Full Sahityam</h4><p>${lyrics.sahityam}</p>${lyrics.telugu?.sahityam ? `<p class="telugu">${lyrics.telugu.sahityam}</p>` : ''}</div>`;
+      }
+
+      if (trans.text && !lyrics.isHallucinated) {
+        html += `<div class="lyrics-section" style="border-left-color:#4caf50;"><h4>🎤 Transcription (Full Text)</h4><p>${trans.text}</p></div>`;
+      }
+      if (trans.words && trans.words.length && !lyrics.isHallucinated) {
+        html += `<div class="lyrics-section" style="border-left-color:#4caf50;"><h4>🎤 Word Timestamps</h4><p style="font-size:0.85rem;">${trans.words.slice(0,30).map(w=>`<span style="display:inline-block;background:rgba(102,126,234,0.1);padding:2px 6px;border-radius:4px;margin:2px;">${w.word}</span>`).join(' ')}${trans.words.length>30?' ...':''}</p></div>`;
+      }
+
+      if (!html) {
+        html = '<p style="color:#8888aa;text-align:center;padding:40px;">No lyrics available for this recording.</p>';
+      }
+
+      container.innerHTML = html;
+    }
+
+    function displayNotation(data) {
+      const container = document.getElementById('notationContainer');
+      let html = '';
+
+      if (data.beatSwaras && data.beatSwaras.length) {
+        html += `<div class="result-card" style="margin-bottom:20px;"><h3>🎼 Swara Sequence</h3><div class="swara-display">${data.beatSwaras.map(b=>b.swara).join(' ')}</div></div>`;
+      }
+
+      if (data.sahityamGrid && data.sahityamGrid.length) {
+        html += `<div class="result-card" style="margin-bottom:20px;"><h3>📐 Tala Grid</h3>`;
+        data.sahityamGrid.slice(0, 5).forEach(cycle => {
+          html += `<div style="margin:12px 0;padding:12px;background:#0a0a1a;border-radius:8px;"><strong>Cycle ${cycle.cycle}</strong>`;
+          cycle.sections.forEach(sec => {
+            html += `<div style="margin:8px 0;padding:8px;background:#0f0f1a;border-radius:4px;"><span style="color:#667eea;">Section ${sec.section}</span> `;
+            html += sec.beats.map(b => `<span style="display:inline-block;padding:4px 8px;background:${b.isClap?'rgba(76,175,80,0.2)':b.isWave?'rgba(255,152,0,0.2)':'rgba(102,126,234,0.1)'};border-radius:4px;margin:2px;color:${b.isClap?'#4caf50':b.isWave?'#ff9800':'#a0d0ff'};font-family:monospace;">${b.swara}</span>`).join(' ');
+            html += `</div>`;
+          });
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+
+      if (data.sectionGrids) {
+        ['pallavi', 'anupallavi', 'charanam'].forEach(sec => {
+          if (data.sectionGrids[sec] && data.sectionGrids[sec].length) {
+            html += `<div class="result-card" style="margin-bottom:20px;"><h3>🎵 ${sec.charAt(0).toUpperCase()+sec.slice(1)} Grid</h3>`;
+            html += `<div class="swara-display">${data.sectionGrids[sec].map(c=>c.sections.map(s=>s.beats.map(b=>b.swara).join(' ')).join(' | ')).join('\n')}</div>`;
+            html += `</div>`;
           }
         });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-        currentResult = data;
-        displayResults(data);
-        goStep(3);
-      } catch (e) {
-        document.getElementById('processingStatus').innerHTML = '<div class="error-box">Error: ' + e.message + '</div>';
-        setTimeout(() => goStep(1), 3000);
       }
-      stream.getTracks().forEach(t => t.stop());
-    };
-    mediaRecorder.start();
-    document.getElementById('recordIcon').textContent = '⏹️';
-    document.getElementById('recordText').textContent = 'Recording...';
-    document.getElementById('recordDesc').textContent = 'Click again to stop and analyze';
-  } catch (e) {
-    alert('Microphone access denied or not available: ' + e.message);
-  }
-}
 
-function displayResults(data) {
-  document.getElementById('resFileName').textContent = data.fileName || 'Unknown';
-  document.getElementById('resRagaBadge').textContent = data.raga || 'Unknown Raga';
+      if (data.sheetMusicXml) {
+        html += `<div class="result-card" style="margin-bottom:20px;"><h3>📄 MusicXML</h3><pre style="background:#0a0a1a;padding:12px;border-radius:8px;overflow-x:auto;font-size:0.8rem;color:#a0a0cc;">${data.sheetMusicXml.substring(0,500)}...</pre></div>`;
+      }
 
-  document.getElementById('ragaName').textContent = data.raga || '-';
-  document.getElementById('ragaType').textContent = data.isRagamalika ? 'Rāgamālika' : (data.ragaNumber ? `Melakarta #${data.ragaNumber}` : 'Janya / Derived');
-  document.getElementById('ragaNumber').textContent = data.ragaNumber || '-';
-  document.getElementById('ragaChakra').textContent = data.ragaChakra || '-';
-  document.getElementById('ragaConfidence').textContent = data.confidence ? (data.confidence * 100).toFixed(1) + '%' : '-';
-  document.getElementById('ragaSource').textContent = data.detectionSource || '-';
-  document.getElementById('ragaMood').textContent = data.mood || '-';
-  document.getElementById('ragaAroha').textContent = data.aroha || '-';
-  document.getElementById('ragaAvaroha').textContent = data.avaroha || '-';
-  document.getElementById('detAroha').textContent = data.detectedAroha || '-';
-  document.getElementById('detAvaroha').textContent = data.detectedAvaroha || '-';
+      if (!html) {
+        html = '<p style="color:#8888aa;text-align:center;padding:40px;">No notation available for this recording.</p>';
+      }
 
-  const tc = document.getElementById('topCandidates');
-  tc.innerHTML = '';
-  if (data.topCandidates) {
-    data.topCandidates.forEach(c => {
-      const div = document.createElement('div');
-      div.style.cssText = 'display:inline-block;background:var(--bg);padding:0.3rem 0.6rem;border-radius:4px;margin:0.2rem;font-size:0.85rem;';
-      div.textContent = `${c.name} (${(c.score * 100).toFixed(1)}%)`;
-      tc.appendChild(div);
-    });
-  }
-
-  const gl = document.getElementById('gamakaList');
-  gl.innerHTML = '';
-  if (data.gamakas) {
-    data.gamakas.forEach(g => {
-      const span = document.createElement('span');
-      span.style.cssText = 'display:inline-block;background:var(--accent2);padding:0.2rem 0.5rem;border-radius:4px;margin:0.15rem;font-size:0.8rem;';
-      span.textContent = g;
-      gl.appendChild(span);
-    });
-  }
-
-  const aa = data.audioAnalysis || {};
-  document.getElementById('detScale').textContent = (aa.detectedScale || []).join(', ');
-  document.getElementById('detTempo').textContent = aa.estimatedTempo ? aa.estimatedTempo + ' BPM' : '-';
-  document.getElementById('tempoConf').textContent = aa.tempoConfidence ? `Confidence: ${(aa.tempoConfidence * 100).toFixed(0)}%` : '';
-  const tala = aa.tala || {};
-  document.getElementById('detTala').textContent = tala.name || '-';
-  document.getElementById('talaDetail').textContent = tala.angaStr || '';
-  document.getElementById('pitchFrames').textContent = aa.pitchFrameCount || '0';
-
-  const cv = document.getElementById('chromaViz');
-  cv.innerHTML = '';
-  if (aa.chroma) {
-    aa.chroma.forEach((v, i) => {
-      const bar = document.createElement('div');
-      bar.style.cssText = `flex:1;background:${v > 0.3 ? 'var(--accent)' : v > 0.15 ? 'var(--warn)' : 'var(--accent2)'};border-radius:3px;transition:height 0.5s;`;
-      bar.style.height = Math.max(5, v * 100) + '%';
-      cv.appendChild(bar);
-    });
-  }
-
-  const ta = document.getElementById('talaAlts');
-  ta.innerHTML = '';
-  if (tala.alternatives) {
-    tala.alternatives.forEach(a => {
-      const div = document.createElement('div');
-      div.style.cssText = 'display:inline-block;background:var(--bg);padding:0.2rem 0.5rem;border-radius:4px;margin:0.15rem;font-size:0.8rem;';
-      div.textContent = `${a.name} (${a.beats} beats)`;
-      ta.appendChild(div);
-    });
-  }
-
-  const tr = data.transcription || {};
-  document.getElementById('transLang').textContent = tr.language || '-';
-  document.getElementById('transConf').textContent = tr.confidence ? (tr.confidence * 100).toFixed(1) + '%' : '-';
-  document.getElementById('transDur').textContent = tr.duration ? tr.duration.toFixed(1) + 's' : '-';
-  document.getElementById('transSegs').textContent = (tr.segments || []).length;
-
-  const te = document.getElementById('transcriptionError');
-  if (tr.error && !tr.available) {
-    te.style.display = 'block';
-    te.textContent = 'Transcription: ' + tr.error;
-  } else {
-    te.style.display = 'none';
-  }
-
-  document.getElementById('transText').textContent = tr.text || '(No transcription available)';
-
-  const tw = document.getElementById('transWords');
-  tw.innerHTML = '';
-  if (tr.words) {
-    tr.words.forEach(w => {
-      const span = document.createElement('span');
-      span.className = 'word-tag';
-      span.innerHTML = `${w.word}<br><span class="time">${w.start?.toFixed(1)}s</span>`;
-      tw.appendChild(span);
-    });
-  }
-
-  document.getElementById('swaraCount').textContent = data.swaraCount || '0';
-  const sg = data.sahityamGrid || {};
-  document.getElementById('swaraTala').textContent = sg.tala || '-';
-  document.getElementById('swaraTempo').textContent = (sg.tempo || '-') + ' BPM';
-
-  function renderNotation(notation, elId) {
-    const el = document.getElementById(elId);
-    if (!notation) { el.textContent = '(No data)'; return; }
-    el.innerHTML = notation.split(' ').map(t => {
-      if (t === '||') return '<span class="tala-mark">‖</span>';
-      if (t === '|') return '<span class="tala-mark">|</span>';
-      if (t === '.') return '<span class="pause">·</span>';
-      return '<span class="swara">' + t + '</span>';
-    }).join(' ');
-  }
-  renderNotation(sg.notation, 'swaraNotation');
-  renderNotation((sg.pallavi || []).map(b => b.swara).join(' '), 'pallaviNotation');
-  renderNotation((sg.anupallavi || []).map(b => b.swara).join(' '), 'anupallaviNotation');
-
-  const ld = data.lyricsData || {};
-  document.getElementById('lyrRaga').textContent = ld.raga || '-';
-  document.getElementById('lyrTala').textContent = ld.tala || '-';
-  document.getElementById('lyrTempo').textContent = (ld.tempo || '-') + ' BPM';
-  document.getElementById('lyrPallavi').textContent = ld.sections?.pallavi || '(No lyrics available)';
-  document.getElementById('lyrAnupallavi').textContent = ld.sections?.anupallavi || '';
-  document.getElementById('lyrCharanam').textContent = ld.sections?.charanam || '';
-  document.getElementById('lyrSahityam').textContent = ld.sections?.sahityam || '';
-
-  document.getElementById('sheetPreview').textContent = data.sheetMusicXml ? data.sheetMusicXml.slice(0, 2000) + '...' : '(No sheet music generated)';
-
-  const sl = document.getElementById('stemsList');
-  sl.innerHTML = '';
-  if (data.stems && data.stems.stems) {
-    data.stems.stems.forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'saved-item';
-      div.innerHTML = `<div><span class="title">${s.icon} ${s.label}</span><div class="meta">${s.role} | MIDI Program: ${s.midiProgram}</div></div>`;
-      sl.appendChild(div);
-    });
-  }
-
-  const insts = data.instruments || [];
-  document.getElementById('instPrimary').textContent = insts[0]?.label || 'Unknown';
-  document.getElementById('instGamakas').textContent = (data.gamakaAnalysis?.detected || []).join(', ') || 'None detected';
-
-  const il = document.getElementById('instList');
-  il.innerHTML = '';
-  insts.forEach(i => {
-    const div = document.createElement('div');
-    div.className = 'saved-item';
-    div.innerHTML = `<div><span class="title">${i.label}</span><div class="meta">Confidence: ${(i.confidence * 100).toFixed(0)}%</div></div>`;
-    il.appendChild(div);
-  });
-
-  document.getElementById('gamakaDetail').textContent = data.gamakaAnalysis?.summary || 'No gamaka analysis available.';
-}
-
-function showTab(tabId) {
-  document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.result-nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  event.target.classList.add('active');
-}
-
-function downloadSheet() {
-  if (!currentResult || !currentResult.sheetMusicXml) return alert('No sheet music available');
-  const blob = new Blob([currentResult.sheetMusicXml], { type: 'application/xml' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (currentResult.raga || 'composition') + '.musicxml';
-  a.click();
-}
-
-function downloadMidi() {
-  if (!currentResult || !currentResult.midiB64) return alert('No MIDI available');
-  const blob = new Blob([Uint8Array.from(atob(currentResult.midiB64), c => c.charCodeAt(0))], { type: 'audio/midi' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (currentResult.raga || 'composition') + '.mid';
-  a.click();
-}
-
-function newAnalysis() {
-  currentResult = null;
-  document.getElementById('urlInput').value = '';
-  document.getElementById('fileInput').value = '';
-  goStep(1);
-}
-
-async function loadSavedList() {
-  try {
-    const res = await fetch('/api/analyses');
-    const data = await res.json();
-    const list = document.getElementById('savedList');
-    list.innerHTML = '';
-    if (!data.length) {
-      list.innerHTML = '<p style="color:var(--muted)">No saved analyses yet. Analyze some audio first!</p>';
-      return;
+      container.innerHTML = html;
     }
-    data.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'saved-item';
-      const date = item.createdAt ? new Date(item.createdAt * 1000).toLocaleString() : 'Unknown';
-      div.innerHTML = `<div><span class="title">${item.title || 'Untitled'}</span><div class="meta">${item.raga || 'Unknown'} | ${date}</div></div><span style="color:var(--accent);font-size:0.8rem;">View →</span>`;
-      div.onclick = () => loadSavedDetail(item.id);
-      list.appendChild(div);
-    });
-  } catch (e) {
-    document.getElementById('savedList').innerHTML = '<p style="color:var(--muted)">Could not load saved analyses.</p>';
-  }
-}
 
-async function loadSavedDetail(id) {
-  try {
-    const res = await fetch('/api/analysis/' + id);
-    const data = await res.json();
-    document.getElementById('savedDetail').style.display = 'block';
-    document.getElementById('savedTitle').textContent = data.fileName || 'Analysis ' + id;
-    document.getElementById('savedJson').textContent = JSON.stringify(data, null, 2);
-  } catch (e) {
-    alert('Failed to load analysis: ' + e.message);
-  }
-}
+    function displayProcessing(data) {
+      const status = document.getElementById('processingStatus');
+      const segments = data.segments || [];
+      const sahityaCount = segments.filter(s => s.type === 'SAHITYA').length;
+      const gamakaCount = segments.filter(s => s.type === 'GAMAKA').length;
 
-function closeSavedDetail() {
-  document.getElementById('savedDetail').style.display = 'none';
-}
-
-goStep(1);
-</script>
+      status.innerHTML = `
+        <div class="result-grid">
+          <div class="result-card">
+            <h3>📊 Segments</h3>
+            <p style="font-size:1.5rem;font-weight:700;color:#667eea;">${segments.length}</p>
+            <div class="meta">${sahityaCount} SAHITYA • ${gamakaCount} GAMAKA</div>
+          </div>
+          <div class="result-card">
+            <h3>🎤 Transcription</h3>
+            <p>${data.transcription?.words?.length || 0} words detected</p>
+            <div class="meta">${data.lyrics?.isHallucinated ? '<span style="color:#f44336;">Hallucination filtered</span>' : '<span style="color:#4caf50;">Clean</span>'}</div>
+          </div>
+          <div class="result-card">
+            <h3>🎵 Pitch Frames</h3>
+            <p>${data.beatSwaras?.length || 0} beat swaras mapped</p>
+            <div class="meta">Tala: ${data.tala || '—'}</div>
+          </div>
+          <div class="result-card">
+            <h3>💾 Database</h3>
+            <p>ID: <code style="background:#0a0a1a;padding:2px 6px;border-radius:4px;">${data.id?.slice(0,8) || '—'}</code></p>
+            <div class="meta">Saved to music.db</div>
+          </div>
+        </div>
+        ${segments.length ? `
+        <div style="margin-top:20px;">
+          <h4 style="color:#667eea;margin-bottom:12px;">Segment Breakdown</h4>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${segments.slice(0,10).map(s=>`
+              <div style="padding:12px;background:#0f0f1a;border-radius:8px;border-left:3px solid ${s.type==='SAHITYA'?'#667eea':s.type==='GAMAKA'?'#ff9800':'#4caf50'};">
+                <strong>${s.type}</strong> ${s.section ? `• ${s.section}` : ''}
+                <span style="color:#8888aa;float:right;">${s.start?.toFixed(1)||'—'}s – ${s.end?.toFixed(1)||'—'}s</span>
+                <div style="margin-top:4px;color:#a0a0cc;font-size:0.9rem;">${s.line ? s.line.substring(0,80)+(s.line.length>80?'...':'') : 'No transcription'}</div>
+              </div>
+            `).join('')}
+            ${segments.length>10?`<div style="text-align:center;color:#8888aa;padding:8px;">+ ${segments.length-10} more segments</div>`:''}
+          </div>
+        </div>` : ''}
+      `;
+    }
+  </script>
 </body>
 </html>
