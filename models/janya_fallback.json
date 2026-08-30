@@ -1,0 +1,340 @@
+{
+  "bilahari": {
+    "name": "bilahari",
+    "melakarta": 29,
+    "aroha": "S R2 G3 P D2 S",
+    "avaroha": "S N3 D2 P M1 G3 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0.9,
+      0,
+      0,
+      1,
+      0,
+      0.8,
+      0,
+      0.7
+    ],
+    "arohaS": [
+      0,
+      2,
+      4,
+      7,
+      9
+    ],
+    "avarohaS": [
+      0,
+      2,
+      4,
+      5,
+      7,
+      9,
+      11
+    ],
+    "mood": "joyful",
+    "gamakas": [
+      "kampita",
+      "spurita"
+    ],
+    "chakra": "Bana"
+  },
+  "mohanam": {
+    "name": "mohanam",
+    "melakarta": 28,
+    "aroha": "S R2 G3 P D2 S",
+    "avaroha": "S D2 P G3 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0.9,
+      0,
+      0,
+      1,
+      0,
+      0.8,
+      0,
+      0
+    ],
+    "arohaS": [
+      0,
+      2,
+      4,
+      7,
+      9
+    ],
+    "avarohaS": [
+      0,
+      2,
+      4,
+      7,
+      9
+    ],
+    "mood": "romantic",
+    "gamakas": [
+      "kampita"
+    ],
+    "chakra": "Bana"
+  },
+  "hamsadhwani": {
+    "name": "hamsadhwani",
+    "melakarta": 29,
+    "aroha": "S R2 G3 P N3 S",
+    "avaroha": "S N3 P G3 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0.9,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0.8
+    ],
+    "arohaS": [
+      0,
+      2,
+      4,
+      7,
+      11
+    ],
+    "avarohaS": [
+      0,
+      2,
+      4,
+      7,
+      11
+    ],
+    "mood": "auspicious",
+    "gamakas": [
+      "kampita",
+      "spurita"
+    ],
+    "chakra": "Bana"
+  },
+  "shankarabharanam": {
+    "name": "shankarabharanam",
+    "melakarta": 29,
+    "aroha": "S R2 G3 M1 P D2 N3 S",
+    "avaroha": "S N3 D2 P M1 G3 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0.9,
+      0.9,
+      0,
+      1,
+      0,
+      0.8,
+      0,
+      0.7
+    ],
+    "arohaS": [
+      0,
+      2,
+      4,
+      5,
+      7,
+      9,
+      11
+    ],
+    "avarohaS": [
+      0,
+      2,
+      4,
+      5,
+      7,
+      9,
+      11
+    ],
+    "mood": "majestic",
+    "gamakas": [
+      "kampita",
+      "spurita",
+      "andola"
+    ],
+    "chakra": "Bana"
+  },
+  "kharaharapriya": {
+    "name": "kharaharapriya",
+    "melakarta": 22,
+    "aroha": "S R2 G2 M1 P D2 N2 S",
+    "avaroha": "S N2 D2 P M1 G2 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0,
+      0.9,
+      0,
+      1,
+      0,
+      0.8,
+      0.8,
+      0
+    ],
+    "arohaS": [
+      0,
+      2,
+      3,
+      5,
+      7,
+      9,
+      10
+    ],
+    "avarohaS": [
+      0,
+      2,
+      3,
+      5,
+      7,
+      9,
+      10
+    ],
+    "mood": "versatile",
+    "gamakas": [
+      "kampita",
+      "spurita"
+    ],
+    "chakra": "Veda"
+  },
+  "nATA": {
+    "name": "nATA",
+    "melakarta": 36,
+    "aroha": "S R3 G3 M1 P D3 N3 S",
+    "avaroha": "S N3 P M1 R3 S",
+    "chroma": [
+      1,
+      0,
+      0,
+      0.9,
+      0.9,
+      0.9,
+      0,
+      1,
+      0,
+      0,
+      0.9,
+      0.9
+    ],
+    "arohaS": [
+      0,
+      3,
+      4,
+      5,
+      7,
+      10,
+      11
+    ],
+    "avarohaS": [
+      0,
+      3,
+      5,
+      7,
+      11
+    ],
+    "mood": "grand",
+    "gamakas": [
+      "kampita"
+    ],
+    "chakra": "Ritu"
+  },
+  "shanmukhapriya": {
+    "name": "shanmukhapriya",
+    "melakarta": 56,
+    "aroha": "S R2 G2 M2 P D1 N2 S",
+    "avaroha": "S N2 D1 P M2 G2 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0,
+      0,
+      0.9,
+      1,
+      0.8,
+      0,
+      0.8,
+      0
+    ],
+    "arohaS": [
+      0,
+      2,
+      3,
+      6,
+      7,
+      8,
+      10
+    ],
+    "avarohaS": [
+      0,
+      2,
+      3,
+      6,
+      7,
+      8,
+      10
+    ],
+    "mood": "dynamic",
+    "gamakas": [
+      "kampita",
+      "spurita"
+    ],
+    "chakra": "Disi"
+  },
+  "hEmaavati": {
+    "name": "hEmaavati",
+    "melakarta": 58,
+    "aroha": "S R2 G2 M2 P D2 N2 S",
+    "avaroha": "S N2 D2 P M2 G2 R2 S",
+    "chroma": [
+      1,
+      0,
+      0.8,
+      0,
+      0,
+      0,
+      0.9,
+      1,
+      0,
+      0.8,
+      0.8,
+      0
+    ],
+    "arohaS": [
+      0,
+      2,
+      3,
+      6,
+      7,
+      9,
+      10
+    ],
+    "avarohaS": [
+      0,
+      2,
+      3,
+      6,
+      7,
+      9,
+      10
+    ],
+    "mood": "beautiful",
+    "gamakas": [
+      "kampita"
+    ],
+    "chakra": "Disi"
+  }
+}
