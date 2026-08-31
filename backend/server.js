@@ -1,82 +1,83 @@
-'use strict';
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
-const fs      = require('fs');
+"use strict";
+/**
+ * GoMaa Raga Vidya v4.0 — Express Server
+ */
+
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit:'500mb' }));
-app.use(express.urlencoded({ extended:true, limit:'500mb' }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-app.use(express.static(path.join(__dirname,'../apps/web')));
+const recognizeRouter = require("./routes/recognize");
+const composeRouter = require("./routes/compose");
+const db = require("../core/db/sqlite");
 
-app.use('/api/recognize', require('./routes/recognize'));
-app.use('/api/search',    require('./routes/search'));
-app.use('/api/compose',   require('./routes/compose'));
-app.use('/api/dataset',   require('./routes/dataset'));
-app.use('/api/ingest',    require('./routes/ingest'));
-app.use('/api/recognize/scale', require('./routes/scale'));
-app.use('/api/transcribe',      require('./routes/transcribe'));
+app.use("/api/recognize", recognizeRouter);
+app.use("/api/compose", composeRouter);
 
-app.get('/api/health', (_req,res)=>{
-  res.json({ status:'ok', app:'GoMaa Raga Vidya v3', version:'3.0.0',
-             timestamp:new Date().toISOString() });
-});
-app.get('/api/ragas', (_req,res)=>{
-  res.json(require('../models/knowledge_base.json'));
-});
+// Serve static frontend
+app.use(express.static(path.join(__dirname, "../apps/web")));
 
-app.get('/api/sheet/:compositionId', async(req,res)=>{
-  const db = require('../core/db/sqlite');
-  await db.getDb();
-  const row = db.get('SELECT sheetMusicXml,title FROM compositions WHERE id=?',[req.params.compositionId]);
-  if(!row||!row.sheetMusicXml) return res.status(404).send('not found');
-  res.setHeader('Content-Type','application/xml');
-  res.setHeader('Content-Disposition',`attachment; filename="${(row.title||'composition').replace(/[^a-z0-9]/gi,'_')}.musicxml"`);
-  res.send(row.sheetMusicXml);
-});
-
-app.get('/api/midi/:compositionId', async(req,res)=>{
-  const db = require('../core/db/sqlite');
-  await db.getDb();
-  const row = db.get('SELECT midiB64,title FROM compositions WHERE id=?',[req.params.compositionId]);
-  if(!row||!row.midiB64) return res.status(404).send('not found');
-  res.setHeader('Content-Type','audio/midi');
-  res.setHeader('Content-Disposition',`attachment; filename="${(row.title||'composition').replace(/[^a-z0-9]/gi,'_')}.mid"`);
-  res.send(Buffer.from(row.midiB64,'base64'));
-});
-
-app.get('/api/analysis/:id', async (req, res) => {
+// List all saved analyses
+app.get("/api/analyses", async (req, res) => {
   try {
-    const db = require('../core/db/sqlite');
-    await db.getDb();
-    const row = db.get('SELECT * FROM music WHERE id=?', [req.params.id]);
-    if (!row) return res.status(404).json({ error: 'Not found' });
-    const result = JSON.parse(row.analysisJson || '{}');
-    res.json({ ...result, id: row.id, savedAt: row.createdAt });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/analyses', async (_req, res) => {
-  try {
-    const db = require('../core/db/sqlite');
-    await db.getDb();
-    const rows = db.all('SELECT id, title, raga, ragaNumber, createdAt FROM music ORDER BY createdAt DESC LIMIT 100');
+    const rows = await db.all(
+      `SELECT id, title, raga, tala, createdAt FROM music ORDER BY createdAt DESC LIMIT 100`
+    );
     res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-app.get('*',(_req,res)=>{
-  res.sendFile(path.join(__dirname,'../apps/web/index.html'));
+// Get single analysis
+app.get("/api/analysis/:id", async (req, res) => {
+  try {
+    const row = await db.get(`SELECT analysisJson FROM music WHERE id = ?`, [req.params.id]);
+    if (!row) return res.status(404).json({ error: "Not found" });
+    res.json(JSON.parse(row.analysisJson));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-const PORT = process.env.PORT||3000;
-app.listen(PORT,()=>{
-  console.log(`\n🎼  GoMaa Raga Vidya v3  →  http://localhost:${PORT}\n`);
+// Get MusicXML
+app.get("/api/sheet/:id", async (req, res) => {
+  try {
+    const row = await db.get(`SELECT sheetMusic, raga FROM music WHERE id = ?`, [req.params.id]);
+    if (!row || !row.sheetMusic) return res.status(404).json({ error: "Not found" });
+    res.setHeader("Content-Type", "application/xml");
+    res.setHeader("Content-Disposition", `attachment; filename="${row.raga || 'composition'}.musicxml"`);
+    res.send(row.sheetMusic);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
-module.exports=app;
+
+// Get MIDI
+app.get("/api/midi/:id", async (req, res) => {
+  try {
+    const row = await db.get(`SELECT midiData, raga FROM music WHERE id = ?`, [req.params.id]);
+    if (!row || !row.midiData) return res.status(404).json({ error: "Not found" });
+    const buf = Buffer.from(row.midiData, "base64");
+    res.setHeader("Content-Type", "audio/midi");
+    res.setHeader("Content-Disposition", `attachment; filename="${row.raga || 'composition'}.mid"`);
+    res.send(buf);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", version: "4.0.0", timestamp: Date.now() });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`[GoMaa] Server running on http://localhost:${PORT}`);
+});

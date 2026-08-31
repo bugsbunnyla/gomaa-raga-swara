@@ -1,77 +1,63 @@
 "use strict";
 /**
- * GoMaa SQLite Wrapper v3.1.1 (better-sqlite3 version)
- * No native compilation issues, synchronous API, much faster
- * Drop-in replacement for sqlite3 wrapper
+ * GoMaa Raga Vidya v4.0 — SQLite Database (Async, Fixed)
  */
 
-const Database = require("better-sqlite3");
 const path = require("path");
-const fs = require("fs");
+const sqlite3 = require("sqlite3").verbose();
 
-const DB_DIR = path.join(__dirname, "../../models");
-const DB_PATH = path.join(DB_DIR, "music.db");
+const DB_PATH = path.join(__dirname, "../../models/music.db");
 
-let _db = null;
+let db = null;
 
-function ensureDir() {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+function getDB() {
+  if (!db) {
+    db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) console.error("[GoMaa] DB open error:", err.message);
+      else console.log("[GoMaa] DB connected:", DB_PATH);
+    });
+    db.on("error", (err) => {
+      console.error("[GoMaa] DB error:", err.message);
+    });
   }
-}
-
-function initDb() {
-  if (_db) return _db;
-  ensureDir();
-  _db = new Database(DB_PATH);
-  _db.pragma("journal_mode = WAL");
-  _db.pragma("foreign_keys = ON");
-  console.log("[SQLite] Connected to", DB_PATH);
-  return _db;
-}
-
-function getDb() {
-  return initDb();
+  return db;
 }
 
 function run(sql, params = []) {
-  const db = initDb();
-  const stmt = db.prepare(sql);
-  const info = stmt.run(...(Array.isArray(params) ? params : [params]));
-  return { lastID: info.lastInsertRowid, changes: info.changes };
+  return new Promise((resolve, reject) => {
+    getDB().run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
 }
 
 function get(sql, params = []) {
-  const db = initDb();
-  const stmt = db.prepare(sql);
-  return stmt.get(...(Array.isArray(params) ? params : [params])) || null;
+  return new Promise((resolve, reject) => {
+    getDB().get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
 }
 
 function all(sql, params = []) {
-  const db = initDb();
-  const stmt = db.prepare(sql);
-  return stmt.all(...(Array.isArray(params) ? params : [params]));
-}
-
-function exec(sql) {
-  const db = initDb();
-  db.exec(sql);
+  return new Promise((resolve, reject) => {
+    getDB().all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
 }
 
 function close() {
-  if (_db) {
-    _db.close();
-    _db = null;
-  }
+  return new Promise((resolve, reject) => {
+    if (!db) { resolve(); return; }
+    db.close((err) => {
+      if (err) reject(err);
+      else { db = null; resolve(); }
+    });
+  });
 }
 
-module.exports = {
-  getDb,
-  run,
-  get,
-  all,
-  exec,
-  close,
-  initDb,
-  DB_PATH
-};
+module.exports = { getDB, run, get, all, close };

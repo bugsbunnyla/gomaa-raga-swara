@@ -1,51 +1,60 @@
-const db = require('../core/db/sqlite');
-const fs = require('fs');
-const path = require('path');
+"use strict";
+/**
+ * GoMaa Raga Vidya v4.0 — Database Initialization
+ */
 
-async function main() {
-  try {
-    console.log('🗄️  Initializing GoMaa Raga Vidya v3 database...');
+const fs = require("fs");
+const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
 
-    // Ensure DB is connected
-    await db.getDb();
+const MODELS_DIR = path.join(__dirname, "../models");
+fs.mkdirSync(MODELS_DIR, { recursive: true });
 
-    // Read and execute schema
-    const schemaPath = path.join(__dirname, '../core/db/schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      const schema = fs.readFileSync(schemaPath, 'utf8');
-      await db.exec(schema);
-      console.log('✅ Schema applied');
-    } else {
-      console.warn('⚠️  schema.sql not found, skipping schema creation');
-    }
+const DB_PATH = path.join(MODELS_DIR, "music.db");
 
-    // Run migrations for columns that might be missing in existing DBs
-    const migrations = [
-      'ALTER TABLE music ADD COLUMN analysisJson TEXT',
-      'ALTER TABLE music ADD COLUMN lyricsJson TEXT',
-      'ALTER TABLE music ADD COLUMN transcriptionJson TEXT',
-    ];
-
-    for (const sql of migrations) {
-      try {
-        await db.run(sql);
-        console.log('✅ Migrated:', sql);
-      } catch(e) {
-        if (e.message && (e.message.includes('duplicate column') || e.message.includes('already exists'))) {
-          console.log('ℹ️  Column already exists');
-        } else {
-          console.log('ℹ️  Migration check:', e.message);
-        }
-      }
-    }
-
-    console.log('✅ Database ready at', db.DB_PATH);
-    console.log('   Run: npm run ingest  to populate with music data');
-    process.exit(0);
-  } catch (e) {
-    console.error('❌ DB init failed:', e.message);
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) {
+    console.error("[GoMaa] Failed to open DB:", err.message);
     process.exit(1);
   }
-}
+  console.log("[GoMaa] DB opened:", DB_PATH);
+});
 
-main();
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS music (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    artist TEXT,
+    raga TEXT,
+    ragaNumber INTEGER,
+    aroha TEXT,
+    avaroha TEXT,
+    mood TEXT,
+    gamakas TEXT,
+    tala TEXT,
+    tempo REAL,
+    duration REAL,
+    filePath TEXT,
+    embedding TEXT,
+    chromaVector TEXT,
+    sections TEXT,
+    sheetMusic TEXT,
+    midiData TEXT,
+    language TEXT,
+    analysisJson TEXT,
+    lyricsJson TEXT,
+    transcriptionJson TEXT,
+    createdAt INTEGER
+  )`);
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_music_raga ON music(raga)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_music_tala ON music(tala)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_music_created ON music(createdAt)`);
+
+  console.log("[GoMaa] Database initialized successfully.");
+});
+
+db.close((err) => {
+  if (err) console.error("[GoMaa] DB close error:", err.message);
+  else console.log("[GoMaa] DB connection closed.");
+});

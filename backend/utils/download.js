@@ -1,233 +1,111 @@
 "use strict";
 /**
- * GoMaa Download Utilities v3.1
- * Supports: YouTube (yt-dlp), generic HTTP/HTTPS URLs
+ * GoMaa Raga Vidya v4.0 — URL Download Utility
+ * Fixes:
+ *   - Better yt-dlp error handling with informative messages
+ *   - Fallback to yt-dlp with --no-check-certificate
+ *   - Clear error messages for missing JS runtime
+ *   - Support for playlist URLs by extracting single video
  */
 
-const https = require("https");
-const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { spawn } = require("child_process");
-const crypto = require("crypto");
+const { execSync } = require("child_process");
 
-const UPLOAD_DIR = path.join(__dirname, "../../uploads");
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const YT_HOSTS = ["youtube.com", "www.youtube.com", "youtu.be", "youtube-nocookie.com", "m.youtube.com", "music.youtube.com"];
-const FETCH_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-  "Accept": "audio/*,video/*,*/*;q=0.8",
-  "Accept-Encoding": "identity",
-  "Cache-Control": "no-cache",
-  "Referer": "https://www.youtube.com/"
-};
-
-function isYouTubeUrl(url) {
+function checkYtDlp() {
   try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, "");
-    return YT_HOSTS.includes(host);
-  } catch (_) {
-    return false;
-  }
-}
-
-function extractYouTubeId(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtu.be")) {
-      return u.pathname.slice(1).split("?")[0];
-    }
-    return u.searchParams.get("v") || u.searchParams.get("vi");
-  } catch (_) {
+    const out = execSync("yt-dlp --version", { encoding: "utf8", timeout: 10000 });
+    return out.trim();
+  } catch (e) {
     return null;
   }
 }
 
-function findYtdlp() {
-  const candidates = process.platform === "win32"
-    ? ["yt-dlp.exe", "yt-dlp", "youtube-dl.exe", "youtube-dl"]
-    : ["yt-dlp", "youtube-dl", "yt-dlp.exe"];
-  for (const bin of candidates) {
-    try {
-      const { execSync } = require("child_process");
-      execSync(`"${bin}" --version`, { stdio: "ignore", timeout: 5000 });
-      return bin;
-    } catch (_) {}
+function getYtDlpErrorAdvice(stderr) {
+  const msg = stderr || "";
+  if (msg.includes("No supported JavaScript runtime")) {
+    return "yt-dlp requires a JavaScript runtime (Node.js or Deno) to download from YouTube. " +
+           "Install Node.js from https://nodejs.org or run: npm install -g yt-dlp";
   }
-  return null;
+  if (msg.includes("503") || msg.includes("Service Unavailable")) {
+    return "YouTube returned 503 Service Unavailable. This is usually temporary. " +
+           "Try again in a few minutes, or the video may be restricted.";
+  }
+  if (msg.includes("Sign in to confirm")) {
+    return "YouTube is requiring sign-in for this video. Try a different video URL.";
+  }
+  if (msg.includes("Private video")) {
+    return "This YouTube video is private or unavailable.";
+  }
+  if (msg.includes("Video unavailable")) {
+    return "This YouTube video is unavailable (may be deleted or region-blocked).";
+  }
+  if (msg.includes("not found") || msg.includes("command not found")) {
+    return "yt-dlp is not installed. Install it with: pip install yt-dlp";
+  }
+  return msg.split("\n").slice(0, 3).join(" ");
 }
 
-/**
- * Download audio from YouTube using yt-dlp
- */
-function downloadYouTube(url, outputDir = UPLOAD_DIR) {
-  return new Promise((resolve, reject) => {
-    const ytdlp = findYtdlp();
-    if (!ytdlp) {
-      return reject(new Error("yt-dlp not found. Install it: pip install yt-dlp"));
+async function downloadFromUrl(url, destDir) {
+  const isYouTube = /youtube\.com|youtu\.be/.test(url);
+  const fileName = `download_${Date.now()}.mp3`;
+  const filePath = path.join(destDir, fileName);
+
+  if (isYouTube) {
+    const ytDlpVersion = checkYtDlp();
+    if (!ytDlpVersion) {
+      throw new Error("yt-dlp is not installed. Install it with: pip install yt-dlp");
     }
 
-    const videoId = extractYouTubeId(url);
-    if (!videoId) {
-      return reject(new Error("Could not extract YouTube video ID"));
+    // Clean the URL - extract just the video ID to avoid playlist issues
+    let cleanUrl = url;
+    const videoIdMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (videoIdMatch) {
+      cleanUrl = `https://www.youtube.com/watch?v=${videoIdMatch[1]}`;
     }
 
-    const outputPath = path.join(outputDir, `${videoId}.mp3`);
-
-    // Skip if already cached (less than 1 hour old)
-    if (fs.existsSync(outputPath)) {
-      const stat = fs.statSync(outputPath);
-      const ageMs = Date.now() - stat.mtimeMs;
-      if (ageMs < 60 * 60 * 1000) {
-        console.log(`[Download] Using cached YouTube audio: ${outputPath}`);
-        return resolve({ filePath: outputPath, originalName: `${videoId}.mp3`, sourceUrl: url, cached: true });
-      }
-    }
-
-    console.log(`[Download] Starting yt-dlp for: ${url}`);
-
-    const args = [
-      "--no-playlist",
-      "--extract-audio",
-      "--audio-format", "mp3",
-      "--audio-quality", "0",     // best
-      "--output", outputPath,
-      "--no-warnings",
-      "--no-check-certificates",
-      "--user-agent", FETCH_HEADERS["User-Agent"],
-      "--add-header", `Referer:${FETCH_HEADERS.Referer}`,
-      url
+    const attempts = [
+      // Attempt 1: Standard download
+      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist -o "${filePath}" "${cleanUrl}"`,
+      // Attempt 2: With no-check-certificate and geo-bypass
+      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist --no-check-certificate --geo-bypass -o "${filePath}" "${cleanUrl}"`,
+      // Attempt 3: Force IPv4, ignore errors
+      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist --no-check-certificate --geo-bypass --force-ipv4 --ignore-errors -o "${filePath}" "${cleanUrl}"`
     ];
 
-    const proc = spawn(ytdlp, args, {
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-      timeout: 300000  // 5 minutes
-    });
-
-    let stdout = "";
-    let stderr = "";
-    proc.stdout.on("data", d => stdout += d.toString());
-    proc.stderr.on("data", d => stderr += d.toString());
-
-    proc.on("close", (code) => {
-      if (code !== 0) {
-        // Sometimes yt-dlp returns non-zero but file exists
-        if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1024) {
-          console.warn(`[Download] yt-dlp exited ${code} but file exists. Using it.`);
-          return resolve({ filePath: outputPath, originalName: `${videoId}.mp3`, sourceUrl: url, cached: false });
+    let lastError = "";
+    for (let i = 0; i < attempts.length; i++) {
+      try {
+        execSync(attempts[i], { timeout: 300000, stdio: "pipe" });
+        // Verify file was created
+        if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1024) {
+          return { filePath, originalName: "youtube_audio.mp3", sourceUrl: cleanUrl };
         }
-        return reject(new Error(`yt-dlp failed (code ${code}): ${stderr.slice(0, 500)}`));
-      }
-      if (!fs.existsSync(outputPath)) {
-        return reject(new Error("yt-dlp did not produce output file"));
-      }
-      console.log(`[Download] YouTube audio saved: ${outputPath}`);
-      resolve({ filePath: outputPath, originalName: `${videoId}.mp3`, sourceUrl: url, cached: false });
-    });
-
-    proc.on("error", (err) => {
-      reject(new Error(`yt-dlp spawn error: ${err.message}`));
-    });
-  });
-}
-
-/**
- * Download audio from a generic HTTP/HTTPS URL
- */
-function downloadGenericUrl(url, outputDir = UPLOAD_DIR) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const ext = path.extname(urlObj.pathname) || ".mp3";
-    const hash = crypto.createHash("sha256").update(url).digest("hex").slice(0, 16);
-    const outputPath = path.join(outputDir, `url_${hash}${ext}`);
-
-    // Skip if cached
-    if (fs.existsSync(outputPath)) {
-      const stat = fs.statSync(outputPath);
-      const ageMs = Date.now() - stat.mtimeMs;
-      if (ageMs < 60 * 60 * 1000) {
-        console.log(`[Download] Using cached URL: ${outputPath}`);
-        return resolve({ filePath: outputPath, originalName: path.basename(urlObj.pathname) || `download${ext}`, sourceUrl: url, cached: true });
+      } catch (e) {
+        lastError = e.stderr ? e.stderr.toString() : e.message;
+        console.warn(`[GoMaa] yt-dlp attempt ${i + 1} failed:`, lastError.substring(0, 200));
+        // Clean up partial file
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch (_) {}
+        }
       }
     }
 
-    console.log(`[Download] Fetching generic URL: ${url}`);
-
-    const client = urlObj.protocol === "https:" ? https : http;
-    const req = client.get(url, { headers: FETCH_HEADERS, timeout: 60000 }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // Follow redirect
-        return downloadGenericUrl(res.headers.location, outputDir).then(resolve).catch(reject);
-      }
-      if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
-      }
-
-      const file = fs.createWriteStream(outputPath);
-      let totalBytes = 0;
-      const MAX_BYTES = 200 * 1024 * 1024; // 200MB limit
-
-      res.on("data", (chunk) => {
-        totalBytes += chunk.length;
-        if (totalBytes > MAX_BYTES) {
-          file.destroy();
-          fs.unlinkSync(outputPath);
-          reject(new Error("Download too large (>200MB)"));
-        }
-      });
-
-      res.pipe(file);
-      file.on("finish", () => {
-        file.close();
-        if (fs.statSync(outputPath).size < 1024) {
-          fs.unlinkSync(outputPath);
-          return reject(new Error("Downloaded file is too small (<1KB)"));
-        }
-        console.log(`[Download] Saved ${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)} MB to ${outputPath}`);
-        resolve({
-          filePath: outputPath,
-          originalName: path.basename(urlObj.pathname) || `download${ext}`,
-          sourceUrl: url,
-          cached: false
-        });
-      });
-
-      file.on("error", (err) => {
-        fs.unlinkSync(outputPath).catch(() => {});
-        reject(new Error(`File write error: ${err.message}`));
-      });
-    });
-
-    req.on("error", (err) => {
-      reject(new Error(`Download request failed: ${err.message}`));
-    });
-
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Download timed out after 60s"));
-    });
-  });
-}
-
-/**
- * Unified download handler
- */
-async function downloadFromUrl(url, outputDir = UPLOAD_DIR) {
-  if (isYouTubeUrl(url)) {
-    return downloadYouTube(url, outputDir);
+    const advice = getYtDlpErrorAdvice(lastError);
+    throw new Error(`YouTube download failed after ${attempts.length} attempts. ${advice}`);
+  } else {
+    // Direct URL download using fetch
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength < 1024) throw new Error("Downloaded file is too small (likely not an audio file)");
+      fs.writeFileSync(filePath, Buffer.from(buffer));
+      return { filePath, originalName: path.basename(url).split("?")[0] || "download.mp3", sourceUrl: url };
+    } catch (e) {
+      throw new Error(`Direct download failed: ${e.message}`);
+    }
   }
-  return downloadGenericUrl(url, outputDir);
 }
 
-module.exports = {
-  downloadFromUrl,
-  downloadYouTube,
-  downloadGenericUrl,
-  isYouTubeUrl,
-  extractYouTubeId,
-  findYtdlp,
-  YT_HOSTS
-};
+module.exports = { downloadFromUrl, checkYtDlp };

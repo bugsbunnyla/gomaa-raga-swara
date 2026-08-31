@@ -1,167 +1,29 @@
 {
   "_meta": {
-    "version": "3.2.1",
-    "verified": true,
-    "source": "Carnatic Composition DB",
-    "lastUpdated": "2026-08-30"
+    "version": "1.0",
+    "count": 1
   },
   "ekadantam": {
     "raga": "bilahari",
     "ragaNumber": 29,
     "melakarta": "shankarabharanam",
     "tala": "Misra Chapu",
-    "talaBeats": 7,
-    "talaSections": [
-      3,
-      2,
-      2
-    ],
     "composer": "Muttuswaamee Dikshitar",
     "language": "Sanskrit",
     "aroha": "S R2 G3 P D2 S",
     "avaroha": "S N3 D2 P M1 G3 R2 S",
     "pallavi": {
       "iast": "Ekadantam bhajEham EkAnEka phala pradam",
-      "telugu": "ఏకదంతం భజేహం ఏకానేక ఫల ప్రదం",
-      "devanagari": "एकदन्तं भजेहम् एकानেক फल प्रदम्"
+      "telugu": "ఏకదంతం భజేహం ఏకానేక ఫల ప్రదం"
     },
     "anupallavi": {
       "iast": "pAkashAsanArAdhitam pAmara paNDitAdi nuta padam",
-      "telugu": "పాకశాసనారాధితం పామర పండితాది నుత పదం",
-      "devanagari": "पाकशासनाराधितं पामर पण्डितादि नुत पदम्"
+      "telugu": "పాకశాసనారాధితం పామర పండితాది నుత పదం"
     },
     "charanam": {
       "iast": "kailAsa nAtha kumAram kArtikEya manOharam hAlAsya kSEtra vEgavatI taTa vihAram haram kOlAhala guruguha sahitam kOTi mAra lAvaNya hitam mAlA kaNkaNAdi dharaNam mASA vallabhAmbA ramaNam",
-      "telugu": "కైలాస నాథ కుమారం కార్తికేయ మనోహరం హాలాస్య క్షేత్ర వేగవతీ తట విహారం హరం కోలాహల గురుగుహ సహితం కోటి మార లావణ్య హితం మాలా కంకణాది ధరణం మాసా వల్లభాంబా రమణం",
-      "devanagari": "कैलास नाथ कुमारं कार्तिकेय मनोहरं हालास्य क्षेत्र वेगवती तट विहारं हरं कोलाहल गुरुगुह सहितं कोटि मार लावण्य हितं माला कङ्कणादि धरणं मासा वल्लभाम्बा रमणं"
+      "telugu": "కైలాస నాథ కుమారం కార్తికేయ మనోహరం హాలాస్య క్షేత్ర వేగవతీ తట విహారం హరం కోలాహల గురుగుహ సహితం కోటి మార లావణ్య హితం మాలా కంకణాది ధరణం మాసా వల్లభాంబా రమణం"
     },
     "sahityam": "Ekadantam bhajEham EkAnEka phala pradam pAkashAsanArAdhitam pAmara paNDitAdi nuta padam kailAsa nAtha kumAram kArtikEya manOharam hAlAsya kSEtra vEgavatI taTa vihAram haram kOlAhala guruguha sahitam kOTi mAra lAvaNya hitam mAlA kaNkaNAdi dharaNam mASA vallabhAmbA ramaNam"
-  },
-  "mahaganapatim": {
-    "raga": "nATA",
-    "ragaNumber": 36,
-    "melakarta": "chalanata",
-    "tala": "Adi",
-    "talaBeats": 8,
-    "talaSections": [
-      4,
-      2,
-      2
-    ],
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R3 G3 M1 P D3 N3 S",
-    "avaroha": "S N3 P M1 R3 S",
-    "pallavi": {
-      "iast": "mahA gaNapatim manasa smarAmi",
-      "telugu": "మహా గణపతిం మనసా స్మరామి",
-      "devanagari": "महा गणपतिं मनसा स्मरामि"
-    },
-    "anupallavi": {
-      "iast": "vAsishTa vAma dEvAdi vanditam",
-      "telugu": "వాసిష్ఠ వామదేవాది వందితం",
-      "devanagari": "वासिष्ठ वामदेवादि वन्दितम्"
-    },
-    "charanam": {
-      "iast": "mOdakahastam chEtah prasannam mAtangavadanam mahA bala darpitam mAnasa smarAmi mAruti tulya vEgam jitEndriyam buddhi matAm variShTham vAtAtmajam vAnara yUthamukhyam shri rAma dUtam shaNmukha prapannam",
-      "telugu": "మోదకహస్తం చేతః ప్రసన్నం మాతంగవదనం మహా బల దర్పితం మానస స్మరామి మారుతి తుల్య వేగం జితేంద్రియం బుద్ధి మతాం వరిష్ఠం వాతాత్మజం వానర యూథముఖ్యం శ్రీ రామ దూతం షణ్ముఖ ప్రపన్నం",
-      "devanagari": "मोदकहस्तं चेतः प्रसन्नं मातङ्गवदनं महा बल दर्पितं मानस स्मरामि मारुति तुल्य वेगं जितेन्द्रियं बुद्धि मतां वरिष्ठं वातात्मजं वानर यूथमुख्यं श्री राम दूतं षण्मुख प्रपन्नम्"
-    },
-    "sahityam": "mahA gaNapatim manasa smarAmi vAsishTa vAma dEvAdi vanditam mOdakahastam chEtah prasannam mAtangavadanam mahA bala darpitam mAnasa smarAmi mAruti tulya vEgam jitEndriyam buddhi matAm variShTham vAtAtmajam vAnara yUthamukhyam shri rAma dUtam shaNmukha prapannam"
-  },
-  "mohanam": {
-    "raga": "mOhanA",
-    "ragaNumber": 28,
-    "melakarta": "harikAmbhOji",
-    "tala": "Adi",
-    "talaBeats": 8,
-    "talaSections": [
-      4,
-      2,
-      2
-    ],
-    "composer": "TyAgarAja",
-    "language": "Telugu",
-    "aroha": "S R2 G3 P D2 S",
-    "avaroha": "S D2 P G3 R2 S",
-    "pallavi": {
-      "iast": "ninnu kOri yunnAnu niratamu nA manasunu",
-      "telugu": "నిన్ను కోరి యున్నాను నిరతము నా మనసును",
-      "devanagari": "निन्नु कोरि युन्नानु निरतमु ना मनसुनु"
-    },
-    "anupallavi": {
-      "iast": "kanulu kOrina kAnta karamula pAlina",
-      "telugu": "కనులు కోరిన కాంత కరముల పాలిన",
-      "devanagari": "कनुलु कोरिन कान्त करमुल पालिन"
-    },
-    "charanam": {
-      "iast": "muraLI gAna lOla mura hara nAtha dAsa jana paripAla mukunda",
-      "telugu": "మురళీ గాన లోల ముర హర నాథ దాస జన పరిపాల ముకుంద",
-      "devanagari": "मुरली गान लोल मुर हर नाथ दास जन परिपाल मुकुन्द"
-    },
-    "sahityam": "ninnu kOri yunnAnu niratamu nA manasunu kanulu kOrina kAnta karamula pAlina muraLI gAna lOla mura hara nAtha dAsa jana paripAla mukunda"
-  },
-  "siddhivinayakam": {
-    "raga": "Shanmukhapriya",
-    "ragaNumber": 56,
-    "melakarta": "shanmukhapriya",
-    "tala": "Rupaka",
-    "talaBeats": 6,
-    "talaSections": [
-      4,
-      2
-    ],
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R2 G2 M2 P D1 N2 S",
-    "avaroha": "S N2 D1 P M2 G2 R2 S",
-    "pallavi": {
-      "iast": "siddhi vinAyakam anisham chintayAmi",
-      "telugu": "సిద్ధి వినాయకం అనిశం చింతయామి",
-      "devanagari": "सिद्धि विनायकम् अनिशं चिन्तयामि"
-    },
-    "anupallavi": {
-      "iast": "sadA shivam sadgurum shiva suta guruguham",
-      "telugu": "సదా శివం సద్గురుం శివ సుత గురుగుహం",
-      "devanagari": "सदा शिवं सद्गुरुं शिव सुत गुरुगुहम्"
-    },
-    "charanam": {
-      "iast": "vighna vinAshakam vimala chitta pradAyakam vEdAnta vEdya vibhUti pradAyakam",
-      "telugu": "విఘ్న వినాశకం విమల చిత్త ప్రదాయకం వేదాంత వేద్య విభూతి ప్రదాయకం",
-      "devanagari": "विघ्न विनाशकं विमल चित्त प्रदायकं वेदान्त वेद्य विभूति प्रदायकम्"
-    },
-    "sahityam": "siddhi vinAyakam anisham chintayAmi sadA shivam sadgurum shiva suta guruguham vighna vinAshakam vimala chitta pradAyakam vEdAnta vEdya vibhUti pradAyakam"
-  },
-  "vatapi": {
-    "raga": "hamsadhwani",
-    "ragaNumber": 29,
-    "melakarta": "shankarabharanam",
-    "tala": "Adi",
-    "talaBeats": 8,
-    "talaSections": [
-      4,
-      2,
-      2
-    ],
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R2 G3 P N3 S",
-    "avaroha": "S N3 P G3 R2 S",
-    "pallavi": {
-      "iast": "vAtApi gaNapatim bhajE ham",
-      "telugu": "వాతాపి గణపతిం భజే హం",
-      "devanagari": "वातापि गणपतिं भजे हम्"
-    },
-    "anupallavi": {
-      "iast": "vArANasI pura patim bhaja viShvAsamAtra vara dAyakam",
-      "telugu": "వారాణసీ పుర పతిం భజ విశ్వాసమాత్ర వర దాయకం",
-      "devanagari": "वाराणसी पुर पतिं भज विश्वासमात्र वर दायकम्"
-    },
-    "charanam": {
-      "iast": "pUrvAbhi mukham prasanna vadanaM bhUta prapanca vidyAdhi pAlitam mUla kAraNam mOdaka priyaM muni jana sEvitaM mUla dhAram mahA gaNapatim",
-      "telugu": "పూర్వాభి ముఖం ప్రసన్న వదనం భూత ప్రపంచ విద్యాధి పాలితం మూల కారణం మోదక ప్రియం ముని జన సేవితం మూల ధారం మహా గణపతిం",
-      "devanagari": "पूर्वाभि मुखं प्रसन्न वदनं भूत प्रपञ्च विद्याधि पालितं मूल कारणं मोदक प्रियं मुनि जन सेवितं मूल धारं महा गणपतिम्"
-    },
-    "sahityam": "vAtApi gaNapatim bhajE ham vArANasI pura patim bhaja viShvAsamAtra vara dAyakam pUrvAbhi mukham prasanna vadanaM bhUta prapanca vidyAdhi pAlitam mUla kAraNam mOdaka priyaM muni jana sEvitaM mUla dhAram mahA gaNapatim"
   }
 }
