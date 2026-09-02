@@ -3,727 +3,611 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GoMaa Raga Vidya v4.0</title>
+<title>GoMaa Raga Vidya v4.0.2-patch5</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a14;color:#e0e0ff;min-height:100vh}
-.container{max-width:1400px;margin:0 auto;padding:20px}
-header{text-align:center;padding:30px 0;border-bottom:1px solid #2a2a4a;margin-bottom:20px}
-h1{font-size:2.2rem;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.subtitle{color:#8888aa;margin-top:6px;font-size:.95rem}
-.tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:2px solid #2a2a4a;flex-wrap:wrap}
-.tab{padding:10px 18px;cursor:pointer;border:none;background:transparent;color:#8888aa;font-size:.9rem;transition:all .3s;border-bottom:2px solid transparent}
-.tab.active{color:#667eea;border-bottom-color:#667eea}
-.tab:hover{color:#a0a0cc}
-.panel{display:none}
-.panel.active{display:block}
-.import-tabs{display:flex;gap:8px;margin-bottom:20px}
-.import-tab{flex:1;padding:14px;border-radius:12px;border:1px solid #2a2a4a;background:#1a1a2e;color:#8888aa;cursor:pointer;transition:all .3s;text-align:center;font-size:.9rem}
-.import-tab:hover{border-color:#667eea;color:#a0a0cc}
-.import-tab.active{border-color:#667eea;background:rgba(102,126,234,.1);color:#667eea}
-.import-tab .icon{font-size:1.3rem;display:block;margin-bottom:4px}
-.upload-area{border:2px dashed #3a3a6a;border-radius:16px;padding:50px 30px;text-align:center;transition:all .3s;cursor:pointer}
-.upload-area:hover,.upload-area.dragover{border-color:#667eea;background:rgba(102,126,234,.05)}
-.upload-icon{font-size:2.5rem;margin-bottom:12px}
-.upload-text{color:#8888aa;font-size:.9rem}
-.upload-text strong{color:#e0e0ff}
-input[type="file"]{display:none}
-.url-input-group{display:flex;gap:10px;margin-bottom:12px}
-.url-input-group input{flex:1;padding:12px 16px;border-radius:10px;border:1px solid #3a3a6a;background:#0f0f1a;color:#e0e0ff;font-size:.95rem}
-.url-input-group input:focus{outline:none;border-color:#667eea}
-.url-input-group button{padding:12px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-weight:600;cursor:pointer;transition:all .3s}
-.url-input-group button:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(102,126,234,.3)}
-.url-input-group button:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.recording-area{text-align:center;padding:30px}
-.record-btn{width:100px;height:100px;border-radius:50%;border:4px solid #3a3a6a;background:#1a1a2e;color:#e0e0ff;font-size:2rem;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
-.record-btn:hover{border-color:#f44336;transform:scale(1.05)}
-.record-btn.recording{background:#f44336;border-color:#f44336;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-.record-status{color:#8888aa;font-size:.9rem;margin-top:8px}
-.record-timer{font-size:1.6rem;font-weight:700;color:#667eea;margin-top:6px;font-variant-numeric:tabular-nums}
-.record-waveform{height:50px;margin:16px auto;max-width:350px;display:flex;align-items:center;justify-content:center;gap:2px}
-.record-waveform span{width:4px;background:#667eea;border-radius:2px;transition:height .1s}
-.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:20px 0}
-.option-group{background:#1a1a2e;padding:14px;border-radius:10px;border:1px solid #2a2a4a}
-.option-group label{display:block;margin-bottom:6px;color:#a0a0cc;font-size:.85rem}
-.option-group select,.option-group input{width:100%;padding:8px;border-radius:6px;border:1px solid #3a3a6a;background:#0f0f1a;color:#e0e0ff;font-size:.9rem}
-.btn{padding:12px 28px;border-radius:10px;border:none;font-size:.95rem;cursor:pointer;transition:all .3s;font-weight:600}
-.btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(102,126,234,.3)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.progress{margin:20px 0;display:none}
-.progress.active{display:block}
-.progress-bar{height:6px;background:#1a1a2e;border-radius:3px;overflow:hidden}
-.progress-fill{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);width:0%;transition:width .3s;border-radius:3px}
-.progress-text{text-align:center;margin-top:10px;color:#8888aa;font-size:.85rem}
-.result{background:#1a1a2e;border-radius:14px;padding:20px;margin-top:20px;border:1px solid #2a2a4a}
-.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-.result-card{background:#0f0f1a;padding:16px;border-radius:10px;border:1px solid #2a2a4a}
-.result-card h3{color:#667eea;margin-bottom:10px;font-size:1rem}
-.result-card p{color:#c0c0e0;line-height:1.5;font-size:.9rem}
-.result-card .meta{color:#8888aa;font-size:.8rem;margin-top:6px}
-.swara-display{font-family:'Courier New',monospace;background:#0a0a1a;padding:14px;border-radius:8px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;color:#a0d0ff;font-size:.95rem;line-height:1.7}
-.badge{display:inline-block;padding:3px 10px;border-radius:16px;font-size:.75rem;font-weight:600;margin-right:6px}
-.badge-high{background:rgba(76,175,80,.2);color:#4caf50}
-.badge-medium{background:rgba(255,152,0,.2);color:#ff9800}
-.badge-low{background:rgba(244,67,54,.2);color:#f44336}
-.lyrics-section{margin:14px 0;padding:14px;background:#0f0f1a;border-radius:8px;border-left:3px solid #667eea}
-.lyrics-section h4{color:#667eea;margin-bottom:6px;font-size:.95rem}
-.lyrics-section p{color:#c0c0e0;line-height:1.7;font-size:.9rem}
-.lyrics-section .telugu{color:#a0a0cc;font-style:italic;margin-top:4px}
-.error{background:rgba(244,67,54,.1);border:1px solid rgba(244,67,54,.3);color:#f44336;padding:14px;border-radius:10px;margin-top:14px}
-.warning{background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);color:#ff9800;padding:10px;border-radius:6px;margin:10px 0;font-size:.85rem}
-.info-box{background:rgba(102,126,234,.08);border:1px solid rgba(102,126,234,.2);padding:14px;border-radius:10px;margin-bottom:16px;color:#a0b0ff;font-size:.85rem}
-.info-box strong{color:#667eea}
-.aalapana-block{background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;padding:16px;margin:12px 0}
-.aalapana-block h4{color:#ff9800;margin-bottom:8px;font-size:.95rem}
-.aalapana-block .swara-line{font-family:monospace;color:#a0d0ff;line-height:1.8;font-size:.9rem}
-.aalapana-block .time-range{color:#8888aa;font-size:.8rem;margin-bottom:8px}
-.section-swara-map{margin:16px 0}
-.section-swara-map h4{color:#4caf50;margin:12px 0 6px;font-size:.95rem}
-.section-swara-map .swara-line{font-family:monospace;background:#0a0a1a;padding:10px;border-radius:6px;color:#a0d0ff;font-size:.9rem;line-height:1.6;overflow-x:auto}
-.compose-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-.compose-form .full-width{grid-column:1/-1}
-.compose-form label{display:block;color:#a0a0cc;font-size:.85rem;margin-bottom:4px}
-.compose-form input,.compose-form select,.compose-form textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a6a;background:#0f0f1a;color:#e0e0ff;font-size:.9rem}
-.compose-form textarea{min-height:80px;resize:vertical}
-.compose-form input:focus,.compose-form select:focus,.compose-form textarea:focus{outline:none;border-color:#667eea}
-.session-card{background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:all .2s}
-.session-card:hover{border-color:#667eea;background:rgba(102,126,234,.05)}
-.session-card h4{color:#667eea;font-size:.95rem;margin-bottom:4px}
-.session-card .meta{color:#8888aa;font-size:.8rem}
-.session-card .badge{margin-top:6px}
-@media(max-width:768px){h1{font-size:1.6rem}.upload-area{padding:30px 16px}.import-tabs{flex-direction:column}.url-input-group{flex-direction:column}.compose-form{grid-template-columns:1fr}}
+  :root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#667eea;--text:#e0e0ff;--muted:#8888aa;--good:#4caf50;--warn:#ff9800;--bad:#f44336;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:24px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+  header h1{margin:0;font-size:1.6rem;letter-spacing:1px}
+  header p{margin:6px 0 0;opacity:.9;font-size:.9rem}
+  .container{max-width:1100px;margin:0 auto;padding:20px}
+  .upload-area{border:2px dashed var(--accent);border-radius:16px;padding:32px;text-align:center;background:var(--card);margin-bottom:20px;transition:.2s}
+  .upload-area:hover{border-color:#8a9eff;background:#1f1f3a}
+  .btn{background:var(--accent);color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-size:.95rem;transition:.2s;margin:4px}
+  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,.4)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-secondary{background:#2a2a4a}
+  .btn-secondary:hover:not(:disabled){background:#3a3a6a}
+  .btn-record{background:var(--bad)}
+  .btn-record:hover:not(:disabled){background:#d32f2f}
+  .btn-record.recording{animation:pulse 1.5s infinite;background:#ff5252}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
+  input[type="file"]{display:none}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{background:var(--card);border:none;color:var(--text);padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;transition:.2s}
+  .tab.active{background:var(--accent);font-weight:600}
+  .panel{display:none;background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px}
+  .panel.active{display:block}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.grid-2{grid-template-columns:1fr}}
+  .info-box{background:#12122a;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:14px}
+  .badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:.75rem;background:#2a2a4a;margin:2px}
+  .badge-high{background:var(--good);color:#000}
+  .badge-med{background:var(--warn);color:#000}
+  .badge-low{background:var(--bad)}
+  .session-card{background:#12122a;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.2s}
+  .session-card:hover{border-color:var(--accent)}
+  .session-card h4{margin:0 0 6px}
+  .session-card .meta{color:var(--muted);font-size:.8rem;margin-bottom:6px}
+  .error{color:var(--bad);background:#2a0a0a;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+  .loading{color:var(--accent);padding:20px;text-align:center}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #2a2a4a}
+  th{color:var(--accent);font-weight:600}
+  .swara-line{font-family:"Courier New",monospace;font-size:.9rem;background:#0a0a1a;padding:10px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
+  .section-title{color:var(--accent);font-weight:600;margin-top:14px;margin-bottom:6px}
+  .cycle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+  .cycle-box{background:#0f0f1f;border:1px solid #2a2a4a;border-radius:8px;padding:8px;font-size:.8rem}
+  .clap{color:var(--good);font-weight:bold}
+  .wave{color:var(--warn)}
+  #osmdContainer{width:100%;min-height:500px;background:#fafafa;border-radius:10px;overflow:auto;border:1px solid #2a2a4a}
+  .score-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  audio{width:100%;margin-top:10px;height:36px;border-radius:18px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:10px}
+  .input-row input{padding:8px 12px;border-radius:6px;border:1px solid #2a2a4a;background:#0f0f1a;color:var(--text);width:280px;max-width:100%}
+  .recording-timer{color:var(--bad);font-size:1.2rem;font-weight:600;margin-top:8px}
 </style>
 </head>
 <body>
-<div class="container">
 <header>
-<h1>GoMaa Raga Vidya</h1>
-<p class="subtitle">Carnatic Music Analysis & Raga Recognition v4.0</p>
+  <h1>🎵 GoMaa Raga Vidya</h1>
+  <p>Carnatic &amp; Western Music Analysis Engine — v4.0.2-patch5</p>
 </header>
-<div class="tabs">
-<button class="tab active" data-tab="upload">Import</button>
-<button class="tab" data-tab="processing">Processing</button>
-<button class="tab" data-tab="results">Results</button>
-<button class="tab" data-tab="lyrics">Lyrics & Swara</button>
-<button class="tab" data-tab="notation">Notation</button>
-<button class="tab" data-tab="compose">Compose</button>
-<button class="tab" data-tab="saved">Saved</button>
-</div>
 
-<div class="panel active" id="upload-panel">
-<div class="import-tabs">
-<button class="import-tab active" data-import="file"><span class="icon">&#128193;</span>Upload File</button>
-<button class="import-tab" data-import="youtube"><span class="icon">&#9654;</span>YouTube URL</button>
-<button class="import-tab" data-import="external"><span class="icon">&#127760;</span>External URL</button>
-<button class="import-tab" data-import="record"><span class="icon">&#127908;</span>Live Record</button>
-</div>
+<div class="container">
+  <div class="upload-area" id="dropZone">
+    <p style="font-size:1.1rem;margin-bottom:12px">Drop an audio file, paste a URL, record live, or click to browse</p>
+    <input type="file" id="fileInput" accept="audio/*">
+    <button class="btn" id="chooseFileBtn" onclick="document.getElementById('fileInput').click()">📁 Choose File</button>
+    <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">🎙 Record Live</button>
+    <div class="recording-timer" id="recordTimer" style="display:none">00:00</div>
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="YouTube URL or direct audio URL (.mp3, .wav)...">
+      <button class="btn btn-secondary" id="analyzeUrlBtn" onclick="submitUrl()">Analyze URL</button>
+    </div>
+    <div id="uploadStatus" style="margin-top:10px;color:var(--muted);font-size:.85rem;white-space:pre-wrap;min-height:24px"></div>
+  </div>
 
-<div class="import-panel active" id="import-file">
-<div class="upload-area" id="dropZone">
-<div class="upload-icon">&#128193;</div>
-<p class="upload-text">Drop your Carnatic audio file here or <strong>click to browse</strong></p>
-<p class="upload-text" style="margin-top:6px;font-size:.8rem">MP3, WAV, FLAC, OGG, M4A, AIFF, WEBM</p>
-<input type="file" id="fileInput" accept="audio/*">
-</div>
-</div>
+  <div class="tabs">
+    <button class="tab active" data-tab="results">Results</button>
+    <button class="tab" data-tab="lyrics">Lyrics &amp; Swara</button>
+    <button class="tab" data-tab="notation">Notation</button>
+    <button class="tab" data-tab="score">Score</button>
+    <button class="tab" data-tab="processing">Processing</button>
+    <button class="tab" data-tab="saved">Saved</button>
+  </div>
 
-<div class="import-panel" id="import-youtube" style="display:none">
-<div class="info-box"><strong>Tip:</strong> Paste a YouTube URL. Requires yt-dlp.</div>
-<div class="url-input-group">
-<input type="url" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
-<button id="youtubeAnalyzeBtn" onclick="analyzeUrl('youtube')">Analyze</button>
-</div>
-</div>
-
-<div class="import-panel" id="import-external" style="display:none">
-<div class="info-box"><strong>Tip:</strong> Direct link to an audio file.</div>
-<div class="url-input-group">
-<input type="url" id="externalUrl" placeholder="https://example.com/audio.mp3" autocomplete="off">
-<button id="externalAnalyzeBtn" onclick="analyzeUrl('external')">Analyze</button>
-</div>
-</div>
-
-<div class="import-panel" id="import-record" style="display:none">
-<div class="recording-area">
-<button class="record-btn" id="recordBtn" onclick="toggleRecording()">&#127908;</button>
-<div class="record-timer" id="recordTimer">00:00</div>
-<div class="record-status" id="recordStatus">Click to start recording</div>
-<div class="record-waveform" id="recordWaveform"></div>
-<div style="margin-top:12px">
-<button class="btn btn-primary" id="analyzeRecordingBtn" onclick="analyzeRecording()" disabled>Analyze Recording</button>
-</div>
-</div>
-</div>
-
-<div class="options">
-<div class="option-group">
-<label>Whisper Model</label>
-<select id="modelSelect">
-<option value="small" selected>small (recommended)</option>
-<option value="base">base (fast)</option>
-<option value="medium">medium (accurate)</option>
-<option value="large-v3">large-v3 (best)</option>
-<option value="turbo">turbo (fastest)</option>
-</select>
-</div>
-<div class="option-group">
-<label>Language</label>
-<select id="langSelect">
-<option value="" selected>Auto-detect</option>
-<option value="te">Telugu</option>
-<option value="ta">Tamil</option>
-<option value="sa">Sanskrit</option>
-<option value="kn">Kannada</option>
-<option value="ml">Malayalam</option>
-<option value="hi">Hindi</option>
-<option value="en">English</option>
-</select>
-</div>
-<div class="option-group">
-<label>Analysis Depth</label>
-<select id="depthSelect">
-<option value="full" selected>Full (Raga + Tala + Lyrics + Swara)</option>
-<option value="raga">Raga Only</option>
-<option value="quick">Quick (Raga + Tala)</option>
-</select>
-</div>
-</div>
-
-<div style="text-align:center;margin-top:20px">
-<button class="btn btn-primary" id="analyzeBtn" disabled>Analyze Audio</button>
-</div>
-<div class="progress" id="progress">
-<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-<p class="progress-text" id="progressText">Ready to analyze...</p>
-</div>
-</div>
-
-<div class="panel" id="processing-panel">
-<div class="result">
-<h3 style="color:#667eea;margin-bottom:14px">Processing Status</h3>
-<div id="processingStatus"><p style="color:#8888aa">Upload an audio file, paste a URL, or record to begin analysis...</p></div>
-</div>
-</div>
-
-<div class="panel" id="results-panel"><div id="resultsContainer"></div></div>
-<div class="panel" id="lyrics-panel">
-<div id="lyricsContainer"><p style="color:#8888aa;text-align:center;padding:30px">No analysis yet. Import and analyze audio first.</p></div>
-</div>
-<div class="panel" id="notation-panel">
-<div id="notationContainer"><p style="color:#8888aa;text-align:center;padding:30px">No notation yet. Import and analyze audio first.</p></div>
-</div>
-
-<div class="panel" id="compose-panel">
-<div class="result">
-<h3 style="color:#667eea;margin-bottom:16px">Compose New Kriti</h3>
-<div class="compose-form">
-<div><label>Title</label><input type="text" id="composeTitle" placeholder="Enter composition title"></div>
-<div><label>Raga</label><input type="text" id="composeRaga" placeholder="e.g., bilahari, kalyani, mohanam"></div>
-<div><label>Tala</label>
-<select id="composeTala">
-<option value="Adi (8 beats)">Adi (8 beats)</option>
-<option value="Rupaka (6 beats)">Rupaka (6 beats)</option>
-<option value="Misra Chapu (7 beats)">Misra Chapu (7 beats)</option>
-<option value="Khanda Chapu (5 beats)">Khanda Chapu (5 beats)</option>
-<option value="Tisra Triputa (7 beats)">Tisra Triputa (7 beats)</option>
-<option value="Jhampai (10 beats)">Jhampai (10 beats)</option>
-<option value="Dhruva (14 beats)">Dhruva (14 beats)</option>
-<option value="Matya (9 beats)">Matya (9 beats)</option>
-<option value="Eka (4 beats)">Eka (4 beats)</option>
-</select>
-</div>
-<div><label>Tempo (BPM)</label><input type="number" id="composeTempo" value="80" min="40" max="240"></div>
-<div class="full-width"><label>Pallavi Lyrics / Swara</label><textarea id="composePallavi" placeholder="Enter pallavi text or swara notation (e.g., S R G P D S)"></textarea></div>
-<div class="full-width"><label>Anupallavi Lyrics / Swara</label><textarea id="composeAnupallavi" placeholder="Enter anupallavi text or swara notation"></textarea></div>
-<div class="full-width"><label>Charanam Lyrics / Swara</label><textarea id="composeCharanam" placeholder="Enter charanam text or swara notation"></textarea></div>
-<div class="full-width"><label>Language</label>
-<select id="composeLanguage">
-<option value="Sanskrit">Sanskrit</option>
-<option value="Telugu">Telugu</option>
-<option value="Tamil">Tamil</option>
-<option value="Kannada">Kannada</option>
-<option value="Malayalam">Malayalam</option>
-<option value="Hindi">Hindi</option>
-</select>
-</div>
-<div class="full-width"><label>Instruments</label>
-<select id="composeInstruments" multiple style="min-height:80px">
-<option value="veena" selected>Veena</option>
-<option value="flute">Flute</option>
-<option value="violin">Violin</option>
-<option value="sitar">Sitar</option>
-<option value="mridangam" selected>Mridangam</option>
-<option value="tabla">Tabla</option>
-<option value="ghatam">Ghatam</option>
-<option value="kanjira">Kanjira</option>
-</select>
-</div>
-</div>
-<div style="text-align:center"><button class="btn btn-primary" onclick="composeKriti()">Generate Composition</button></div>
-<div id="composeResult" style="margin-top:20px"></div>
-</div>
-</div>
-
-<div class="panel" id="saved-panel">
-<div class="result">
-<h3 style="color:#667eea;margin-bottom:16px">Saved Analyses & Compositions</h3>
-<div style="display:flex;gap:10px;margin-bottom:16px">
-<button class="btn btn-primary" onclick="loadSavedAnalyses()" style="padding:8px 16px;font-size:.85rem">Refresh</button>
-</div>
-<div id="savedContainer"><p style="color:#8888aa;text-align:center;padding:30px">Loading saved sessions...</p></div>
-</div>
-</div>
+  <div class="panel active" id="results-panel">
+    <div id="resultsContainer"><p style="color:var(--muted);text-align:center;padding:30px">No analysis yet. Upload audio or enter a URL above.</p></div>
+  </div>
+  <div class="panel" id="lyrics-panel">
+    <div id="lyricsContainer"><p style="color:var(--muted);text-align:center;padding:30px">No data yet.</p></div>
+  </div>
+  <div class="panel" id="notation-panel">
+    <div id="notationContainer"><p style="color:var(--muted);text-align:center;padding:30px">No notation yet.</p></div>
+  </div>
+  <div class="panel" id="score-panel">
+    <div class="result">
+      <h3 style="color:var(--accent);margin-bottom:16px">Music Score — Carnatic &amp; Western</h3>
+      <div class="info-box">
+        <strong>MuseScore Compatible:</strong> Download the MusicXML file and open it in MuseScore for full editing and playback.
+        <div style="margin-top:8px">
+          <a id="musescoreDownload" href="#" class="btn btn-secondary" style="text-decoration:none;display:inline-block">Download MusicXML</a>
+          <a id="midiDownload" href="#" class="btn btn-secondary" style="text-decoration:none;display:inline-block">Download MIDI</a>
+        </div>
+      </div>
+      <div class="score-controls">
+        <button class="btn" id="playScoreBtn" onclick="toggleScorePlayback()">▶ Play Score</button>
+        <span id="scoreStatus" style="color:var(--muted);font-size:.85rem">Load audio to enable playback</span>
+      </div>
+      <audio id="scoreAudio" controls preload="none" style="display:none"></audio>
+      <div id="osmdContainer">
+        <p style="color:#8888aa;text-align:center;padding:60px">No score yet. Import and analyze audio first.</p>
+      </div>
+    </div>
+  </div>
+  <div class="panel" id="processing-panel">
+    <div id="processingContainer"><p style="color:var(--muted);text-align:center;padding:30px">No processing info yet.</p></div>
+  </div>
+  <div class="panel" id="saved-panel">
+    <div id="savedContainer"><p style="color:var(--muted);text-align:center;padding:30px">No saved analyses yet.</p></div>
+  </div>
 </div>
 
 <script>
-const API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:3000' : '';
-let currentFile = null;
+const API_BASE = window.location.origin.includes("localhost") ? "http://localhost:3000" : "";
 let currentResult = null;
+let osmdInstance = null;
+let scoreAudio = document.getElementById("scoreAudio");
+let isPlaying = false;
+let playbackInterval = null;
+let isProcessing = false;
+
+// Live recording state
 let mediaRecorder = null;
 let recordedChunks = [];
-let recordingStartTime = null;
-let recordingTimer = null;
-let audioContext = null;
-let analyser = null;
-let animationId = null;
+let recordStartTime = 0;
+let recordTimerInterval = null;
+let isRecording = false;
 
-// Tab navigation
-document.querySelectorAll('.tab').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-    tab.classList.add('active');
-    document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
-    if (tab.dataset.tab === 'saved') loadSavedAnalyses();
-  });
-});
-
-// Import method tabs
-document.querySelectorAll('.import-tab').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('.import-tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelectorAll('.import-panel').forEach(function(p) { p.style.display = 'none'; });
-    tab.classList.add('active');
-    document.getElementById('import-' + tab.dataset.import).style.display = 'block';
-  });
-});
-
-// File upload
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const analyzeBtn = document.getElementById('analyzeBtn');
-
-dropZone.addEventListener('click', function() { fileInput.click(); });
-dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('dragover'); });
-dropZone.addEventListener('drop', function(e) {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', function(e) {
-  if (e.target.files.length) handleFile(e.target.files[0]);
-});
-
-function handleFile(file) {
-  currentFile = file;
-  dropZone.innerHTML = '<div class="upload-icon">&#9989;</div><p class="upload-text"><strong>' + escapeHtml(file.name) + '</strong></p><p class="upload-text" style="font-size:.8rem">' + (file.size / 1024 / 1024).toFixed(2) + ' MB</p>';
-  analyzeBtn.disabled = false;
-  analyzeBtn.onclick = function() { analyzeFile(file); };
+function setProcessing(val, msg) {
+  isProcessing = val;
+  document.getElementById("chooseFileBtn").disabled = val;
+  document.getElementById("analyzeUrlBtn").disabled = val;
+  document.getElementById("recordBtn").disabled = val;
+  document.getElementById("urlInput").disabled = val;
+  document.getElementById("fileInput").disabled = val;
+  if (msg) document.getElementById("uploadStatus").innerHTML = msg;
 }
 
-function escapeHtml(text) {
-  var div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// URL analysis
-async function analyzeUrl(type) {
-  var urlInput = document.getElementById(type + 'Url');
-  var url = urlInput.value.trim();
-  if (!url) { alert('Please enter a URL'); return; }
-  if (type === 'youtube') {
-    var ytRe = /youtube\.com|youtu\.be/;
-    if (!ytRe.test(url)) { alert('Please enter a valid YouTube URL'); return; }
-  }
-  var btn = document.getElementById(type + 'AnalyzeBtn');
-  btn.disabled = true;
-  startProgress();
-  try {
-    updateProgress(20, 'Downloading audio...');
-    var formData = new FormData();
-    formData.append('url', url);
-    formData.append('model', document.getElementById('modelSelect').value);
-    formData.append('language', document.getElementById('langSelect').value);
-    updateProgress(50, 'Analyzing audio...');
-    var res = await fetch(API_BASE + '/api/recognize', { method: 'POST', body: formData });
-    updateProgress(80, 'Processing results...');
-    if (!res.ok) { var err = await res.json(); throw new Error(err.error || 'Analysis failed'); }
-    currentResult = await res.json();
-    updateProgress(100, 'Complete!');
-    displayAll(currentResult);
-    setTimeout(function() { document.querySelector('[data-tab="results"]').click(); }, 500);
-  } catch (e) {
-    updateProgress(0, 'Error: ' + e.message);
-    var errHtml = '<div class="error"><strong>Download Failed</strong><br>' + escapeHtml(e.message) + '<br><br><div style="font-size:.8rem;color:#a0a0cc;margin-top:8px"><strong>Troubleshooting:</strong><ul style="margin:4px 0;padding-left:16px"><li>Ensure yt-dlp is installed: <code>pip install yt-dlp</code></li><li>Ensure Node.js is installed for yt-dlp JS runtime</li><li>Try a different video URL</li></ul></div></div>'; document.getElementById('resultsContainer').innerHTML = errHtml;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// Live recording
+// ═══════════════════════════════════════════════════════════════════════
+// LIVE RECORDING
+// ═══════════════════════════════════════════════════════════════════════
 async function toggleRecording() {
-  var btn = document.getElementById('recordBtn');
-  var status = document.getElementById('recordStatus');
-  var timer = document.getElementById('recordTimer');
-  var analyzeRecBtn = document.getElementById('analyzeRecordingBtn');
+  const btn = document.getElementById("recordBtn");
+  const timer = document.getElementById("recordTimer");
 
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    btn.classList.remove('recording');
-    status.textContent = 'Recording stopped. Click Analyze to process.';
-    clearInterval(recordingTimer);
-    cancelAnimationFrame(animationId);
-    if (audioContext) audioContext.close();
-    analyzeRecBtn.disabled = false;
+  if (isRecording) {
+    // Stop recording
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
     return;
   }
+
+  // Start recording
   try {
-    var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    var source = audioContext.createMediaStreamSource(stream);
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
     recordedChunks = [];
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    mediaRecorder.ondataavailable = function(e) { if (e.data.size > 0) recordedChunks.push(e.data); };
-    mediaRecorder.onstop = function() {
-      var blob = new Blob(recordedChunks, { type: 'audio/webm' });
-      currentFile = new File([blob], 'live_recording.webm', { type: 'audio/webm' });
-      stream.getTracks().forEach(function(t) { t.stop(); });
+
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data.size > 0) recordedChunks.push(e.data);
     };
-    mediaRecorder.start(100);
-    btn.classList.add('recording');
-    status.textContent = 'Recording...';
-    recordingStartTime = Date.now();
-    recordingTimer = setInterval(function() {
-      var elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-      timer.textContent = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
+
+    mediaRecorder.onstop = function() {
+      const blob = new Blob(recordedChunks, { type: "audio/webm" });
+      const file = new File([blob], "live_recording.webm", { type: "audio/webm" });
+      uploadFile(file);
+      stream.getTracks().forEach(t => t.stop());
+      isRecording = false;
+      btn.textContent = "🎙 Record Live";
+      btn.classList.remove("recording");
+      timer.style.display = "none";
+      clearInterval(recordTimerInterval);
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    btn.textContent = "⏹ Stop Recording";
+    btn.classList.add("recording");
+    timer.style.display = "block";
+    recordStartTime = Date.now();
+    recordTimerInterval = setInterval(function() {
+      const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+      const secs = String(elapsed % 60).padStart(2, "0");
+      timer.textContent = mins + ":" + secs;
     }, 1000);
-    var waveform = document.getElementById('recordWaveform');
-    waveform.innerHTML = '';
-    for (var i = 0; i < 50; i++) { var bar = document.createElement('span'); bar.style.height = '4px'; waveform.appendChild(bar); }
-    var bars = waveform.querySelectorAll('span');
-    var dataArray = new Uint8Array(analyser.frequencyBinCount);
-    function draw() {
-      animationId = requestAnimationFrame(draw);
-      analyser.getByteFrequencyData(dataArray);
-      for (var i = 0; i < bars.length; i++) {
-        bars[i].style.height = Math.max(4, dataArray[Math.floor(i * dataArray.length / bars.length)] / 2) + 'px';
-      }
-    }
-    draw();
-  } catch (e) { alert('Microphone access denied: ' + e.message); }
-}
-
-function analyzeRecording() {
-  if (!currentFile) { alert('No recording available.'); return; }
-  analyzeFile(currentFile);
-}
-
-// File analysis
-async function analyzeFile(file) {
-  analyzeBtn.disabled = true;
-  startProgress();
-  try {
-    updateProgress(10, 'Uploading audio...');
-    var formData = new FormData();
-    formData.append('audio', file);
-    formData.append('model', document.getElementById('modelSelect').value);
-    formData.append('language', document.getElementById('langSelect').value);
-    updateProgress(30, 'Analyzing audio...');
-    var res = await fetch(API_BASE + '/api/recognize', { method: 'POST', body: formData });
-    updateProgress(70, 'Processing results...');
-    if (!res.ok) { var err = await res.json(); throw new Error(err.error || 'Analysis failed'); }
-    currentResult = await res.json();
-    updateProgress(100, 'Complete!');
-    displayAll(currentResult);
-    setTimeout(function() { document.querySelector('[data-tab="results"]').click(); }, 500);
   } catch (e) {
-    updateProgress(0, 'Error: ' + e.message);
-    var errHtml = '<div class="error"><strong>Download Failed</strong><br>' + escapeHtml(e.message) + '<br><br><div style="font-size:.8rem;color:#a0a0cc;margin-top:8px"><strong>Troubleshooting:</strong><ul style="margin:4px 0;padding-left:16px"><li>Ensure yt-dlp is installed: <code>pip install yt-dlp</code></li><li>Ensure Node.js is installed for yt-dlp JS runtime</li><li>Try a different video URL</li></ul></div></div>'; document.getElementById('resultsContainer').innerHTML = errHtml;
-  } finally {
-    analyzeBtn.disabled = false;
+    alert("Microphone access denied or not available: " + e.message);
   }
 }
 
-function startProgress() { document.getElementById('progress').classList.add('active'); }
-function updateProgress(pct, text) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressText').textContent = text;
+// ═══════════════════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+document.querySelectorAll(".tab").forEach(function(tab) {
+  tab.addEventListener("click", function() {
+    document.querySelectorAll(".tab").forEach(function(t) { t.classList.remove("active"); });
+    document.querySelectorAll(".panel").forEach(function(p) { p.classList.remove("active"); });
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab + "-panel").classList.add("active");
+    if (tab.dataset.tab === "saved") loadSavedAnalyses();
+    if (tab.dataset.tab === "score" && currentResult) displayScore(currentResult);
+  });
+});
+
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const uploadStatus = document.getElementById("uploadStatus");
+
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.style.borderColor = "#8a9eff"; });
+dropZone.addEventListener("dragleave", () => { dropZone.style.borderColor = ""; });
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.style.borderColor = "";
+  if (isProcessing) return;
+  const files = e.dataTransfer.files;
+  if (files.length) uploadFile(files[0]);
+});
+fileInput.addEventListener("change", e => { if (e.target.files.length && !isProcessing) uploadFile(e.target.files[0]); });
+
+// ═══════════════════════════════════════════════════════════════════════
+// URL ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════
+function submitUrl() {
+  if (isProcessing) return;
+  const url = document.getElementById("urlInput").value.trim();
+  if (!url) return alert("Please enter a URL");
+
+  const isYouTube = /(?:youtube\.com|youtu\.be)/i.test(url);
+  const isDirectAudio = /\.(mp3|wav|flac|ogg|m4a|webm|aac)(\?.*)?$/i.test(url);
+
+  let statusMsg = '<span class="spinner"></span>';
+  if (isYouTube) {
+    statusMsg += '<span style="color:var(--warn)">YouTube detected. Downloading audio (may take 30-90s)...</span>';
+  } else if (isDirectAudio) {
+    statusMsg += '<span style="color:var(--accent)">Downloading direct audio file...</span>';
+  } else {
+    statusMsg += '<span style="color:var(--accent)">Downloading from URL...</span>';
+  }
+  setProcessing(true, statusMsg);
+
+  fetch(API_BASE + "/api/recognize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url })
+  })
+  .then(async function(r) {
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `Server error ${r.status}: ${JSON.stringify(data)}`);
+    return data;
+  })
+  .then(function(data) { handleResult(data); })
+  .catch(function(err) {
+    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(err.message) + '</span>';
+    console.error("[GoMaa Client]", err);
+  })
+  .finally(function() { setProcessing(false); });
 }
 
-function displayAll(data) {
+// ═══════════════════════════════════════════════════════════════════════
+// FILE UPLOAD
+// ═══════════════════════════════════════════════════════════════════════
+function uploadFile(file) {
+  if (isProcessing) return;
+  setProcessing(true, '<span class="spinner"></span><span style="color:var(--accent)">Uploading ' + escapeHtml(file.name) + '...</span>');
+  const fd = new FormData();
+  fd.append("audio", file);
+  fetch(API_BASE + "/api/recognize", { method: "POST", body: fd })
+  .then(async function(r) {
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || `Server error ${r.status}: ${JSON.stringify(data)}`);
+    return data;
+  })
+  .then(function(data) { handleResult(data); })
+  .catch(function(err) {
+    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(err.message) + '</span>';
+    console.error("[GoMaa Client]", err);
+  })
+  .finally(function() { setProcessing(false); });
+}
+
+function handleResult(data) {
+  if (data.error) {
+    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(data.error) + '</span>';
+    return;
+  }
+  currentResult = data;
+  uploadStatus.innerHTML = '<span style="color:var(--good)">✓ Analysis complete in ' + (data.elapsedMs || 0) + 'ms</span>';
   displayResults(data);
   displayLyricsAndSwara(data);
   displayNotation(data);
   displayProcessing(data);
+  displayScore(data);
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.querySelector('[data-tab="results"]').classList.add("active");
+  document.getElementById("results-panel").classList.add("active");
 }
 
+function escapeHtml(t) {
+  if (!t) return "";
+  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESULTS TAB
+// ═══════════════════════════════════════════════════════════════════════
 function displayResults(data) {
-  var confBadge = data.confidence > 0.75 ? 'badge-high' : data.confidence > 0.5 ? 'badge-medium' : 'badge-low';
-  var confText = data.confidenceLabel || (data.confidence > 0.75 ? 'High' : data.confidence > 0.5 ? 'Medium' : 'Low');
-  var confPct = Math.round((data.confidence || 0) * 100);
-  var html = '<div class="result"><div class="result-grid">';
-  html += '<div class="result-card"><h3>Raga</h3><p style="font-size:1.3rem;font-weight:700;color:#667eea">' + (data.raga || 'Unknown') + '</p>';
-  html += '<p>Melakarta #' + (data.ragaNumber || '—') + (data.chakra ? ' &bull; ' + data.chakra : '') + '</p>';
-  html += '<div class="meta"><span class="badge ' + confBadge + '">' + confText + ' (' + confPct + '%)</span> Source: ' + (data.detectionSource || 'unknown') + '</div>';
-  if (data.ragamalika && data.ragamalika.isRagamalika) html += '<div class="warning">Detected as Ragamalika</div>';
-  html += '</div>';
-  html += '<div class="result-card"><h3>Tala</h3><p style="font-size:1.1rem;font-weight:600">' + (data.tala || 'Unknown') + '</p>';
-  html += '<p>' + (data.talaDetail && data.talaDetail.angaStr ? data.talaDetail.angaStr : '') + '</p>';
-  html += '<div class="meta">Tempo: ' + (data.tempo || '—') + ' BPM &bull; Confidence: ' + Math.round((data.tempoConfidence || 0) * 100) + '%</div></div>';
-  html += '<div class="result-card"><h3>Mood & Gamakas</h3><p>' + (data.mood || 'Unknown') + '</p><div class="meta">' + ((data.gamakas || []).join(', ') || '—') + '</div></div>';
-  html += '<div class="result-card"><h3>Scale</h3><p><strong>Arohanam:</strong> ' + (data.aroha || '—') + '</p><p><strong>Avarohanam:</strong> ' + (data.avaroha || '—') + '</p>';
-  if (data.detectedAroha) html += '<div class="meta">Detected Arohanam: ' + data.detectedAroha + '</div>';
-  if (data.detectedAvaroha) html += '<div class="meta">Detected Avarohanam: ' + data.detectedAvaroha + '</div>';
-  html += '</div>';
-  html += '<div class="result-card"><h3>Instruments</h3><p>' + ((data.instruments || []).map(function(i) { return i.label; }).join(', ') || 'Unknown') + '</p></div>';
-  html += '<div class="result-card"><h3>Duration</h3><p>' + (data.duration ? Math.floor(data.duration / 60) + ':' + String(Math.floor(data.duration % 60)).padStart(2, '0') : '—') + '</p><div class="meta">Processing: ' + (data.processingTime || '—') + 'ms</div></div>';
-  html += '</div>';
-  if (data.topCandidates && data.topCandidates.length) {
-    html += '<div style="margin-top:16px"><h4 style="color:#667eea;margin-bottom:10px">Top Candidates</h4><div style="display:flex;flex-wrap:wrap;gap:6px">';
-    data.topCandidates.slice(0, 5).forEach(function(c, i) {
-      html += '<span class="badge" style="background:rgba(102,126,234,.15);color:#a0b0ff">#' + (i + 1) + ' ' + c.name + ' (' + Math.round((c.score || 0) * 100) + '%)</span>';
-    });
-    html += '</div></div>';
-  }
-  html += '</div>';
-  document.getElementById('resultsContainer').innerHTML = html;
+  const compBadge = data.compositionMatch
+    ? '<span class="badge badge-high">Composition: ' + escapeHtml(data.compositionMatch.name) + "</span>"
+    : "";
+  const instHtml = (data.instruments || []).map(i =>
+    '<span class="badge">' + escapeHtml(i.instrument) + " (" + i.percentage + "%)</span>"
+  ).join(" ");
+  document.getElementById("resultsContainer").innerHTML =
+    '<div class="info-box">' +
+      '<div style="font-size:1.2rem;font-weight:600;margin-bottom:8px">' + escapeHtml(data.raga) + "</div>" +
+      '<div>Parent: ' + escapeHtml(data.parent) + "</div>" +
+      '<div>Tala: ' + escapeHtml(data.tala) + " (" + data.beatsPerCycle + " beats)</div>" +
+      '<div>Tempo: ' + data.bpm + " BPM</div>" +
+      '<div>Confidence: ' + data.tempoConfidence + "</div>" +
+      '<div>Duration: ' + Math.round(data.duration * 10) / 10 + "s</div>" +
+      '<div style="margin-top:8px">' + compBadge + "</div>" +
+    '</div>' +
+    '<div class="info-box">' +
+      '<div class="section-title">Aroha</div><div class="swara-line">' + escapeHtml(data.aroha) + "</div>" +
+      '<div class="section-title">Avaroha</div><div class="swara-line">' + escapeHtml(data.avaroha) + "</div>" +
+    '</div>' +
+    '<div class="info-box">' +
+      '<div class="section-title">Scale Detection (Chroma)</div>' +
+      '<div>' + (data.scale?.noteNames || []).map(n => '<span class="badge">' + n + "</span>").join(" ") + "</div>" +
+      '<div style="margin-top:6px;color:var(--muted);font-size:.8rem">Detected semis: [' + (data.scale?.detectedSemitones || []).join(", ") + "] | Confidence: " + (data.scale?.confidence || 0) + "</div>" +
+    '</div>' +
+    '<div class="info-box">' +
+      '<div class="section-title">Instruments Detected</div>' +
+      '<div>' + (instHtml || "None detected") + "</div>" +
+    '</div>';
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// LYRICS & SWARA TAB — displays ALL sahityam keys dynamically
+// ═══════════════════════════════════════════════════════════════════════
 function displayLyricsAndSwara(data) {
-  var lyrics = data.lyrics || {};
-  var trans = data.transcription || {};
-  var container = document.getElementById('lyricsContainer');
-  var html = '';
+  const s = data.swaras || {};
+  const sah = data.sahityam || {};
+  let html = "";
 
-  if (lyrics.isHallucinated) {
-    html += '<div class="warning">Transcription flagged as hallucinated (' + lyrics.hallucinationReason + '). Using composition DB fallback.</div>';
-  }
-  if (lyrics.source === 'composition_db') html += '<div class="badge badge-high" style="margin-bottom:12px">Verified Composition Database</div>';
-  else if (lyrics.source === 'audio_transcription') html += '<div class="badge badge-high" style="margin-bottom:12px;background:rgba(76,175,80,.2);color:#4caf50">Audio Transcription + Composition Match</div>';
-  else if (lyrics.source === 'raga_generic') html += '<div class="badge badge-medium" style="margin-bottom:12px">Raga-based Generic Lyrics</div>';
+  // Display swara sections
+  const swaraSections = [
+    { key: "aalapana", title: "Aalapana", showLyrics: false },
+    { key: "pallavi", title: "Pallavi", showLyrics: true },
+    { key: "anupallavi", title: "Anupallavi", showLyrics: true },
+    { key: "charanam", title: "Charanam", showLyrics: true },
+    { key: "chittaswarams", title: "Chittaswarams", showLyrics: false },
+    { key: "manodharma", title: "Manodharma (Kalpana Swaras)", showLyrics: false }
+  ];
 
-  if (data.sectionSwaraMap) {
-    html += '<div class="section-swara-map">';
-    for (var secName in data.sectionSwaraMap) {
-      var secData = data.sectionSwaraMap[secName];
-      if (!secData || !secData.swaras) continue;
-      html += '<h4>' + secName.charAt(0).toUpperCase() + secName.slice(1) + ' &mdash; Swara & Sahityam</h4>';
-      html += '<div class="swara-line">' + secData.swaras + '</div>';
-      if (secData.westernNotes) html += '<div style="color:#d0a0ff;font-size:.8rem;margin-top:4px">Western: ' + secData.westernNotes + '</div>';
-      if (secData.lyrics) html += '<div style="color:#c0c0e0;margin-top:6px;font-size:.85rem">' + secData.lyrics + '</div>';
-      if (secData.lyricsTelugu) html += '<div style="color:#a0a0cc;font-style:italic;margin-top:4px;font-size:.85rem">' + secData.lyricsTelugu + '</div>';
+  swaraSections.forEach(sec => {
+    const section = s[sec.key];
+    if (!section) return;
+    html += '<div class="section-title">' + sec.title + "</div>";
+    if (section.gamaka) html += '<div style="font-size:.8rem;color:var(--warn);margin-bottom:4px">Gamaka: ' + escapeHtml(section.gamaka) + "</div>";
+    html += '<div class="swara-line">' + escapeHtml(section.swaras) + "</div>";
+    if (sec.showLyrics && section.lyrics) {
+      html += '<div style="margin-top:6px;font-style:italic;color:var(--muted)">' + escapeHtml(section.lyrics) + "</div>";
     }
-    html += '</div>';
-  }
+    if (section.duration) {
+      html += '<div style="font-size:.8rem;color:var(--muted);margin-top:4px">Duration: ' + section.duration + "s</div>";
+    }
+  });
 
-  if (data.aalapanaBlocks && data.aalapanaBlocks.length) {
-    html += '<h3 style="color:#ff9800;margin:20px 0 10px">Aalapana Segments (Audio-Extracted Swaras)</h3>';
-    data.aalapanaBlocks.forEach(function(block) {
-      html += '<div class="aalapana-block">';
-      html += '<div class="time-range">' + (block.start ? block.start.toFixed(1) : '—') + 's &ndash; ' + (block.end ? block.end.toFixed(1) : '—') + 's</div>';
-      html += '<h4>' + (block.section || 'Aalapana') + '</h4>';
-      html += '<div class="swara-line">' + (block.swaras || '—') + '</div>';
-      if (block.westernNotes) html += '<div style="color:#d0a0ff;font-size:.8rem;margin-top:4px">Western: ' + block.westernNotes + '</div>';
-      html += '</div>';
+  // Display all sahityam lyrics dynamically (including charanam1, charanam2, etc.)
+  if (sah && Object.keys(sah).length > 0) {
+    html += '<div class="section-title" style="margin-top:20px">Sahityam (Lyrics)</div>';
+    const keyOrder = ["aalapana", "pallavi", "anupallavi", "charanam", "charanam1", "charanam2", "charanam3", "charanam4"];
+    const displayed = new Set();
+
+    // First, show in preferred order
+    keyOrder.forEach(key => {
+      if (sah[key]) {
+        const title = key.charAt(0).toUpperCase() + key.slice(1).replace(/(\d)/, " $1");
+        html += '<div class="section-title" style="font-size:.9rem;margin-top:10px">' + title + "</div>";
+        html += '<div style="font-style:italic;color:var(--text);line-height:1.6">' + escapeHtml(sah[key]).replace(/\n/g, "<br>") + "</div>";
+        displayed.add(key);
+      }
     });
-  }
 
-  if (lyrics.pallavi) {
-    html += '<div class="lyrics-section"><h4>Pallavi</h4><p>' + lyrics.pallavi + '</p>';
-    if (lyrics.telugu && lyrics.telugu.pallavi) html += '<p class="telugu">' + lyrics.telugu.pallavi + '</p>';
-    html += '</div>';
-  }
-  if (lyrics.anupallavi) {
-    html += '<div class="lyrics-section"><h4>Anupallavi</h4><p>' + lyrics.anupallavi + '</p>';
-    if (lyrics.telugu && lyrics.telugu.anupallavi) html += '<p class="telugu">' + lyrics.telugu.anupallavi + '</p>';
-    html += '</div>';
-  }
-  if (lyrics.charanam) {
-    html += '<div class="lyrics-section"><h4>Charanam</h4><p>' + lyrics.charanam + '</p>';
-    if (lyrics.telugu && lyrics.telugu.charanam) html += '<p class="telugu">' + lyrics.telugu.charanam + '</p>';
-    html += '</div>';
-  }
-  if (lyrics.sahityam) {
-    html += '<div class="lyrics-section"><h4>Full Sahityam</h4><p>' + lyrics.sahityam + '</p>';
-    if (lyrics.telugu && lyrics.telugu.sahityam) html += '<p class="telugu">' + lyrics.telugu.sahityam + '</p>';
-    html += '</div>';
-  }
-  if (trans.text && !lyrics.isHallucinated) {
-    html += '<div class="lyrics-section" style="border-left-color:#4caf50"><h4>Transcription (Full Text)</h4><p>' + trans.text + '</p></div>';
-  }
-  if (trans.words && trans.words.length && !lyrics.isHallucinated) {
-    html += '<div class="lyrics-section" style="border-left-color:#4caf50"><h4>Word Timestamps</h4><p style="font-size:.8rem">';
-    trans.words.slice(0, 30).forEach(function(w) {
-      html += '<span style="display:inline-block;background:rgba(102,126,234,.1);padding:2px 6px;border-radius:4px;margin:2px">' + w.word + '</span> ';
-    });
-    if (trans.words.length > 30) html += '...';
-    html += '</p></div>';
-  }
-
-  if (!html) html = '<p style="color:#8888aa;text-align:center;padding:30px">No lyrics available for this recording.</p>';
-  container.innerHTML = html;
-}
-
-function displayNotation(data) {
-  var container = document.getElementById('notationContainer');
-  var html = '';
-  if (data.beatSwaras && data.beatSwaras.length) {
-    html += '<div class="result-card" style="margin-bottom:16px"><h3>Complete Swara Sequence (Audio-Extracted)</h3><div class="swara-display">' + data.beatSwaras.map(function(b) { return b.swara; }).join(' ') + '</div></div>';
-  }
-  if (data.westernNotes) {
-    html += '<div class="result-card" style="margin-bottom:16px"><h3>Western Notation</h3><div class="swara-display" style="color:#d0a0ff">' + data.westernNotes + '</div></div>';
-  }
-  if (data.sahityamGrid && data.sahityamGrid.length) {
-    html += '<div class="result-card" style="margin-bottom:16px"><h3>Tala Grid</h3>';
-    data.sahityamGrid.slice(0, 5).forEach(function(cycle) {
-      html += '<div style="margin:10px 0;padding:10px;background:#0a0a1a;border-radius:6px"><strong>Cycle ' + cycle.cycle + '</strong>';
-      cycle.sections.forEach(function(sec) {
-        html += '<div style="margin:6px 0;padding:6px;background:#0f0f1a;border-radius:4px"><span style="color:#667eea">Section ' + sec.section + '</span> ';
-        sec.beats.forEach(function(b) {
-          var bg = b.isClap ? 'rgba(76,175,80,.2)' : b.isWave ? 'rgba(255,152,0,.2)' : 'rgba(102,126,234,.1)';
-          var col = b.isClap ? '#4caf50' : b.isWave ? '#ff9800' : '#a0d0ff';
-          html += '<span style="display:inline-block;padding:3px 6px;background:' + bg + ';border-radius:4px;margin:2px;color:' + col + ';font-family:monospace;font-size:.85rem">' + b.swara + '</span>';
-        });
-        html += '</div>';
-      });
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-  if (data.sectionGrids) {
-    ['pallavi', 'anupallavi', 'charanam'].forEach(function(sec) {
-      if (data.sectionGrids[sec] && data.sectionGrids[sec].length) {
-        html += '<div class="result-card" style="margin-bottom:16px"><h3>' + sec.charAt(0).toUpperCase() + sec.slice(1) + ' Grid</h3>';
-        html += '<div class="swara-display">' + data.sectionGrids[sec].map(function(c) {
-          return c.sections.map(function(s) { return s.beats.map(function(b) { return b.swara; }).join(' '); }).join(' | ');
-        }).join('\n') + '</div></div>';
+    // Then show any remaining keys
+    Object.keys(sah).forEach(key => {
+      if (!displayed.has(key) && sah[key]) {
+        const title = key.charAt(0).toUpperCase() + key.slice(1);
+        html += '<div class="section-title" style="font-size:.9rem;margin-top:10px">' + title + "</div>";
+        html += '<div style="font-style:italic;color:var(--text);line-height:1.6">' + escapeHtml(sah[key]).replace(/\n/g, "<br>") + "</div>";
       }
     });
   }
-  if (data.sheetMusicXml) {
-    html += '<div class="result-card" style="margin-bottom:16px"><h3>MusicXML</h3>';
-    html += '<a href="data:application/xml;base64,' + btoa(data.sheetMusicXml) + '" download="' + (data.raga || 'composition') + '.musicxml" class="btn btn-primary" style="padding:6px 14px;font-size:.8rem;text-decoration:none">Download MusicXML</a>';
-    html += '<pre style="background:#0a0a1a;padding:10px;border-radius:6px;overflow-x:auto;font-size:.75rem;color:#a0a0cc;max-height:300px;margin-top:10px">' + data.sheetMusicXml.substring(0, 800) + '...</pre></div>';
-  }
-  if (data.midiB64) {
-    html += '<div class="result-card" style="margin-bottom:16px"><h3>MIDI</h3>';
-    html += '<a href="data:audio/midi;base64,' + data.midiB64 + '" download="' + (data.raga || 'composition') + '.mid" class="btn btn-primary" style="padding:6px 14px;font-size:.8rem;text-decoration:none">Download MIDI</a></div>';
-  }
-  if (!html) html = '<p style="color:#8888aa;text-align:center;padding:30px">No notation available for this recording.</p>';
-  container.innerHTML = html;
+
+  if (!html) html = '<p style="color:var(--muted);text-align:center;padding:20px">No swara or lyrics data available.</p>';
+  document.getElementById("lyricsContainer").innerHTML = html;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// NOTATION TAB
+// ═══════════════════════════════════════════════════════════════════════
+function displayNotation(data) {
+  const s = data.swaras || {};
+  const bpC = data.beatsPerCycle || 8;
+  const sections = ["pallavi", "anupallavi", "charanam", "aalapana", "chittaswarams", "manodharma"];
+  let html = "";
+  html += '<div class="info-box">' +
+    '<div class="section-title">Carnatic Notation</div>' +
+    '<div>Aroha: ' + escapeHtml(data.aroha) + "</div>" +
+    '<div>Avaroha: ' + escapeHtml(data.avaroha) + "</div>" +
+    '<div class="section-title" style="margin-top:10px">Swara Line</div>' +
+    '<div class="swara-line">' + escapeHtml(s.swaraLine || "") + "</div>" +
+  '</div>';
+  sections.forEach(name => {
+    const sec = s[name];
+    if (!sec || !sec.swaras) return;
+    const tokens = sec.swaras.split(/\s+/).filter(Boolean);
+    if (!tokens.length) return;
+    html += '<div class="section-title">' + name.charAt(0).toUpperCase() + name.slice(1) + "</div>";
+    html += '<div class="cycle-grid">';
+    let cycle = 1;
+    for (let i = 0; i < tokens.length; i += bpC) {
+      const chunk = tokens.slice(i, i + bpC);
+      let inner = "";
+      for (let j = 0; j < chunk.length; j++) {
+        const isClap = j === 0;
+        const isWave = j === Math.floor(bpC / 2);
+        const mark = isClap ? '<span class="clap">👏</span>' : (isWave ? '<span class="wave">👋</span>' : "");
+        inner += '<div>' + mark + " " + escapeHtml(chunk[j]) + "</div>";
+      }
+      html += '<div class="cycle-box"><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">Cycle ' + cycle + "</div>" + inner + "</div>";
+      cycle++;
+    }
+    html += "</div>";
+  });
+  document.getElementById("notationContainer").innerHTML = html || '<p style="color:var(--muted);text-align:center;padding:20px">No notation data.</p>';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PROCESSING TAB
+// ═══════════════════════════════════════════════════════════════════════
 function displayProcessing(data) {
-  var status = document.getElementById('processingStatus');
-  var segments = data.segments || [];
-  var sahityaCount = segments.filter(function(s) { return s.type === 'SAHITYA'; }).length;
-  var gamakaCount = segments.filter(function(s) { return s.type === 'GAMAKA'; }).length;
-  var aalapanaCount = segments.filter(function(s) { return s.type === 'ALAPANA'; }).length;
-  var html = '<div class="result-grid">';
-  html += '<div class="result-card"><h3>Segments</h3><p style="font-size:1.3rem;font-weight:700;color:#667eea">' + segments.length + '</p>';
-  html += '<div class="meta">' + aalapanaCount + ' ALAPANA &bull; ' + sahityaCount + ' SAHITYA &bull; ' + gamakaCount + ' GAMAKA</div></div>';
-  html += '<div class="result-card"><h3>Transcription</h3><p>' + (data.transcription && data.transcription.words ? data.transcription.words.length : 0) + ' words detected</p>';
-  html += '<div class="meta">' + (data.lyrics && data.lyrics.isHallucinated ? '<span style="color:#f44336">Hallucination filtered</span>' : '<span style="color:#4caf50">Clean</span>') + '</div></div>';
-  html += '<div class="result-card"><h3>Pitch Frames</h3><p>' + (data.beatSwaras ? data.beatSwaras.length : 0) + ' beat swaras mapped</p><div class="meta">Tala: ' + (data.tala || '—') + '</div></div>';
-  html += '<div class="result-card"><h3>Database</h3><p>ID: <code style="background:#0a0a1a;padding:2px 6px;border-radius:4px">' + (data.id ? data.id.slice(0, 8) : '—') + '</code></p><div class="meta">Saved to music.db</div></div>';
-  html += '</div>';
-  if (segments.length) {
-    html += '<div style="margin-top:16px"><h4 style="color:#667eea;margin-bottom:10px">Segment Breakdown</h4><div style="display:flex;flex-direction:column;gap:6px">';
-    segments.slice(0, 12).forEach(function(s) {
-      var color = s.type === 'ALAPANA' ? '#ff9800' : s.type === 'SAHITYA' ? '#667eea' : s.type === 'GAMAKA' ? '#4caf50' : '#888';
-      html += '<div style="padding:10px;background:#0f0f1a;border-radius:6px;border-left:3px solid ' + color + '">';
-      html += '<strong>' + s.type + '</strong> ' + (s.section ? '&bull; ' + s.section : '');
-      html += '<span style="color:#8888aa;float:right">' + (s.start ? s.start.toFixed(1) : '—') + 's &ndash; ' + (s.end ? s.end.toFixed(1) : '—') + 's</span>';
-      html += '<div style="margin-top:4px;color:#a0a0cc;font-size:.85rem">';
-      if (s.swaras) html += '<span style="font-family:monospace;color:#a0d0ff">' + s.swaras.substring(0, 60) + (s.swaras.length > 60 ? '...' : '') + '</span>';
-      else if (s.line) html += s.line.substring(0, 60) + (s.line.length > 60 ? '...' : '');
-      else html += 'No transcription';
-      html += '</div></div>';
-    });
-    if (segments.length > 12) html += '<div style="text-align:center;color:#8888aa;padding:6px">+ ' + (segments.length - 12) + ' more segments</div>';
-    html += '</div></div>';
-  }
-  status.innerHTML = html;
+  const p = data.processing || {};
+  const rows = [
+    ["Pitch Detection", p.pitchAlgorithm || "YIN"],
+    ["Beat Detection", p.beatAlgorithm || "Comb filter"],
+    ["Tala Detection", p.talaAlgorithm || "DP template"],
+    ["Scale Detection", p.scaleAlgorithm || "Bayesian chroma"],
+    ["Raga Detection", p.ragaAlgorithm || "Multi-modal"],
+    ["Instrument Detection", p.instrumentAlgorithm || "Spectral classification"]
+  ];
+  let html = '<table><thead><tr><th>Module</th><th>Algorithm</th></tr></thead><tbody>';
+  rows.forEach(r => { html += '<tr><td>' + escapeHtml(r[0]) + "</td><td>" + escapeHtml(r[1]) + "</td></tr>"; });
+  html += "</tbody></table>";
+  html += '<div style="margin-top:14px;color:var(--muted);font-size:.85rem">Version: ' + (data.version || "4.0.2") + " | Elapsed: " + (data.elapsedMs || 0) + "ms | DB Saved: " + (data.dbSaved ? "Yes" : "No") + "</div>";
+  document.getElementById("processingContainer").innerHTML = html;
 }
 
-async function composeKriti() {
-  var title = document.getElementById('composeTitle').value.trim() || 'Untitled';
-  var raga = document.getElementById('composeRaga').value.trim();
-  var tala = document.getElementById('composeTala').value;
-  var tempo = parseInt(document.getElementById('composeTempo').value) || 80;
-  var pallavi = document.getElementById('composePallavi').value.trim();
-  var anupallavi = document.getElementById('composeAnupallavi').value.trim();
-  var charanam = document.getElementById('composeCharanam').value.trim();
-  var language = document.getElementById('composeLanguage').value;
-  var instSelect = document.getElementById('composeInstruments');
-  var instruments = Array.from(instSelect.selectedOptions).map(function(o) { return o.value; });
-  if (!raga) { alert('Please enter a raga'); return; }
-  var resultDiv = document.getElementById('composeResult');
-  resultDiv.innerHTML = '<p style="color:#8888aa;text-align:center;padding:20px">Generating composition...</p>';
-  try {
-    var res = await fetch(API_BASE + '/api/compose', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title, raga: raga, tala: tala, tempo: tempo, sections: { pallavi: pallavi, anupallavi: anupallavi, charanam: charanam }, language: language, instruments: instruments })
-    });
-    if (!res.ok) { var err = await res.json(); throw new Error(err.error || 'Composition failed'); }
-    var data = await res.json();
-    resultDiv.innerHTML = '<div class="result"><h3 style="color:#4caf50;margin-bottom:12px">Composition Generated</h3><div class="result-grid">' +
-      '<div class="result-card"><h3>Raga</h3><p style="font-size:1.2rem;font-weight:600;color:#667eea">' + data.raga + '</p><p>Melakarta #' + data.ragaNumber + '</p></div>' +
-      '<div class="result-card"><h3>Tala</h3><p>' + data.tala + '</p></div>' +
-      '<div class="result-card"><h3>Tempo</h3><p>' + data.tempo + ' BPM</p></div>' +
-      '<div class="result-card"><h3>Instruments</h3><p>' + data.instruments.join(', ') + '</p></div></div>' +
-      '<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">' +
-      '<a href="' + API_BASE + '/api/sheet/' + data.id + '" class="btn btn-primary" style="text-decoration:none;padding:8px 16px;font-size:.85rem">Download MusicXML</a>' +
-      '<a href="' + API_BASE + '/api/midi/' + data.id + '" class="btn btn-primary" style="text-decoration:none;padding:8px 16px;font-size:.85rem">Download MIDI</a></div></div>';
-  } catch (e) {
-    resultDiv.innerHTML = '<div class="error">' + escapeHtml(e.message) + '</div>';
+// ═══════════════════════════════════════════════════════════════════════
+// SCORE TAB
+// ═══════════════════════════════════════════════════════════════════════
+function displayScore(data) {
+  const container = document.getElementById("osmdContainer");
+  const downloadXml = document.getElementById("musescoreDownload");
+  const downloadMidi = document.getElementById("midiDownload");
+  const playBtn = document.getElementById("playScoreBtn");
+  const status = document.getElementById("scoreStatus");
+
+  if (!data.sheetMusicXml) {
+    container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:60px">No sheet music available.</p>';
+    downloadXml.style.display = "none"; downloadMidi.style.display = "none"; playBtn.style.display = "none";
+    return;
   }
+  downloadXml.style.display = "inline-block"; downloadMidi.style.display = "inline-block"; playBtn.style.display = "inline-block";
+
+  if (data.id) {
+    downloadXml.href = API_BASE + "/api/recognize/musicxml/" + data.id;
+    downloadMidi.href = API_BASE + "/api/recognize/midi/" + data.id;
+    downloadXml.download = (data.title || data.raga || "score") + ".musicxml";
+    downloadMidi.download = (data.title || data.raga || "score") + ".mid";
+    scoreAudio.src = API_BASE + "/api/recognize/audio/" + data.id;
+    scoreAudio.style.display = "block";
+    status.textContent = "Audio loaded. Press Play Score to start.";
+  } else {
+    scoreAudio.style.display = "none";
+    status.textContent = "Audio playback requires saved session.";
+  }
+
+  container.innerHTML = '<div id="osmd-score" style="width:100%;min-height:500px"></div>';
+  if (typeof opensheetmusicdisplay === "undefined") {
+    var script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.5/build/opensheetmusicdisplay.min.js";
+    script.onload = function() { renderOSMD(data.sheetMusicXml); };
+    script.onerror = function() {
+      container.innerHTML = '<p style="color:#f44336;padding:20px">Failed to load OSMD. Check internet connection.</p>';
+    };
+    document.head.appendChild(script);
+  } else {
+    renderOSMD(data.sheetMusicXml);
+  }
+}
+
+function renderOSMD(xmlString) {
+  try {
+    osmdInstance = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-score", {
+      autoResize: true, drawingParameters: "compacttight",
+      drawTitle: true, drawSubtitle: true, drawComposer: true, drawCredits: true,
+      drawPartNames: true, drawMeasureNumbers: true, drawTimeSignatures: true,
+      colorStemsLikeNoteheads: true, defaultColorNotehead: "#333", defaultColorStem: "#333"
+    });
+    osmdInstance.load(xmlString).then(function() {
+      osmdInstance.render();
+      osmdInstance.cursor.show();
+    }).catch(function(e) {
+      document.getElementById("osmd-score").innerHTML = '<p style="color:#f44336;padding:20px">Error rendering score: ' + escapeHtml(e.message) + "</p>";
+    });
+  } catch (e) {
+    document.getElementById("osmd-score").innerHTML = '<p style="color:#f44336;padding:20px">OSMD Error: ' + escapeHtml(e.message) + "</p>";
+  }
+}
+
+function toggleScorePlayback() {
+  if (!osmdInstance || !scoreAudio.src) return;
+  const btn = document.getElementById("playScoreBtn");
+  if (isPlaying) {
+    scoreAudio.pause(); isPlaying = false; btn.textContent = "▶ Play Score";
+    if (playbackInterval) clearInterval(playbackInterval);
+  } else {
+    scoreAudio.play(); isPlaying = true; btn.textContent = "⏸ Pause"; startCursorFollow();
+  }
+}
+
+function startCursorFollow() {
+  if (playbackInterval) clearInterval(playbackInterval);
+  const bpm = currentResult?.bpm || 120;
+  const bpC = currentResult?.beatsPerCycle || 8;
+  const secPerMeasure = (60 / bpm) * bpC;
+  playbackInterval = setInterval(function() {
+    if (!isPlaying || !osmdInstance || !osmdInstance.cursor) return;
+    const t = scoreAudio.currentTime;
+    const measureIdx = Math.floor(t / secPerMeasure);
+    const totalMeasures = osmdInstance.graphic?.measureList?.length || 0;
+    if (measureIdx >= 0 && measureIdx < totalMeasures) {
+      try { osmdInstance.cursor.reset(); for (let i = 0; i < measureIdx; i++) osmdInstance.cursor.next(); } catch (e) { }
+    }
+    if (scoreAudio.ended) {
+      isPlaying = false;
+      document.getElementById("playScoreBtn").textContent = "▶ Play Score";
+      clearInterval(playbackInterval);
+      try { osmdInstance.cursor.reset(); } catch(e){}
+    }
+  }, 200);
 }
 
 async function loadSavedAnalyses() {
-  var container = document.getElementById('savedContainer');
+  var container = document.getElementById("savedContainer");
   container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:20px">Loading...</p>';
   try {
-    var res = await fetch(API_BASE + '/api/analyses');
-    if (!res.ok) throw new Error('Failed to load');
+    var res = await fetch(API_BASE + "/api/analyses");
+    if (!res.ok) throw new Error("Failed to load");
     var rows = await res.json();
     if (!rows.length) { container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:30px">No saved analyses yet.</p>'; return; }
     container.innerHTML = rows.map(function(r) {
-      return '<div class="session-card" onclick="loadAnalysis(\'' + r.id + '\')"><h4>' + (r.title || 'Untitled') + '</h4>' +
-        '<div class="meta">' + (r.raga || 'Unknown') + ' &bull; ' + (r.tala || '—') + ' &bull; ' + new Date(r.createdAt * 1000).toLocaleString() + '</div>' +
-        '<span class="badge badge-high">ID: ' + r.id.slice(0, 8) + '</span></div>';
-    }).join('');
+      var audioHtml = '<audio controls preload="none" style="width:100%;margin-top:10px;height:32px;border-radius:16px">' +
+        '<source src="' + API_BASE + "/api/recognize/audio/" + r.id + '" type="audio/mpeg">' +
+        "Your browser does not support the audio element.</audio>";
+      return '<div class="session-card" onclick="loadAnalysis(\'' + r.id + '\')">' +
+        '<h4>' + escapeHtml(r.title || "Untitled") + "</h4>" +
+        '<div class="meta">' + escapeHtml(r.raga || "Unknown") + " &bull; " + escapeHtml(r.tala || "—") + " &bull; " + new Date(r.createdAt * 1000).toLocaleString() + "</div>" +
+        '<span class="badge badge-high">ID: ' + r.id.slice(0, 8) + "</span>" + audioHtml + "</div>";
+    }).join("");
   } catch (e) {
-    container.innerHTML = '<div class="error">' + escapeHtml(e.message) + '</div>';
+    container.innerHTML = '<div class="error">' + escapeHtml(e.message) + "</div>";
   }
 }
 
 async function loadAnalysis(id) {
   try {
-    var res = await fetch(API_BASE + '/api/analysis/' + id);
-    if (!res.ok) throw new Error('Not found');
-    currentResult = await res.json();
-    displayAll(currentResult);
-    document.querySelector('[data-tab="results"]').click();
-  } catch (e) { alert('Error loading analysis: ' + e.message); }
+    const res = await fetch(API_BASE + "/api/analyses/" + id);
+    if (!res.ok) throw new Error("Not found");
+    const data = await res.json();
+    if (data.lyrics) {
+      try { data.sahityam = JSON.parse(data.lyrics).sahityam || {}; } catch(e){}
+      try { data.transcription = JSON.parse(data.lyrics).transcription || ""; } catch(e){}
+    }
+    handleResult(data);
+  } catch (e) {
+    alert("Failed to load analysis: " + e.message);
+  }
 }
 </script>
 </body>

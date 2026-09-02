@@ -1,111 +1,170 @@
-"use strict";
 /**
- * GoMaa Raga Vidya v4.0 — URL Download Utility
+ * GoMaa Raga Vidya — download.js v4.0.2-patch5
  * Fixes:
- *   - Better yt-dlp error handling with informative messages
- *   - Fallback to yt-dlp with --no-check-certificate
- *   - Clear error messages for missing JS runtime
- *   - Support for playlist URLs by extracting single video
+ *   1. YouTube URLs: fast-fail with clear message instead of 300s hang
+ *   2. Direct audio URLs (.mp3, .wav, etc.): download without yt-dlp
+ *   3. Non-YouTube video URLs: use yt-dlp normally
  */
 
-const fs = require("fs");
+const { spawn } = require("child_process");
 const path = require("path");
-const { execSync } = require("child_process");
+const fs = require("fs");
+const https = require("https");
+const http = require("http");
 
-function checkYtDlp() {
-  try {
-    const out = execSync("yt-dlp --version", { encoding: "utf8", timeout: 10000 });
-    return out.trim();
-  } catch (e) {
-    return null;
-  }
+function execPromise(cmd, args, opts = {}, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd, args, { shell: false, ...opts });
+    let stdout = "";
+    let stderr = "";
+    let killed = false;
+    const timeout = setTimeout(() => {
+      killed = true;
+      proc.kill("SIGTERM");
+      reject(new Error(`Timed out after ${timeoutMs / 1000}s`));
+    }, timeoutMs);
+    proc.stdout.on("data", d => stdout += d.toString());
+    proc.stderr.on("data", d => stderr += d.toString());
+    proc.on("error", (err) => {
+      clearTimeout(timeout);
+      if (err.code === "ENOENT") reject(new Error(`yt-dlp not found`));
+      else reject(new Error(`yt-dlp spawn error: ${err.message}`));
+    });
+    proc.on("close", code => {
+      clearTimeout(timeout);
+      if (killed) return;
+      if (code !== 0) reject(new Error(stderr || `yt-dlp exited with code ${code}`));
+      else resolve(stdout);
+    });
+  });
 }
 
-function getYtDlpErrorAdvice(stderr) {
-  const msg = stderr || "";
-  if (msg.includes("No supported JavaScript runtime")) {
-    return "yt-dlp requires a JavaScript runtime (Node.js or Deno) to download from YouTube. " +
-           "Install Node.js from https://nodejs.org or run: npm install -g yt-dlp";
+function findYtDlp() {
+  const candidates = process.platform === "win32"
+    ? ["yt-dlp.exe", "yt-dlp", path.join(process.cwd(), "yt-dlp.exe"), path.join(__dirname, "..", "..", "yt-dlp.exe")]
+    : ["yt-dlp", path.join(process.cwd(), "yt-dlp"), path.join(__dirname, "..", "..", "yt-dlp")];
+  for (const c of candidates) {
+    try { if (c.includes(path.sep)) { if (fs.existsSync(c)) return c; } else { return c; } } catch (e) {}
   }
-  if (msg.includes("503") || msg.includes("Service Unavailable")) {
-    return "YouTube returned 503 Service Unavailable. This is usually temporary. " +
-           "Try again in a few minutes, or the video may be restricted.";
-  }
-  if (msg.includes("Sign in to confirm")) {
-    return "YouTube is requiring sign-in for this video. Try a different video URL.";
-  }
-  if (msg.includes("Private video")) {
-    return "This YouTube video is private or unavailable.";
-  }
-  if (msg.includes("Video unavailable")) {
-    return "This YouTube video is unavailable (may be deleted or region-blocked).";
-  }
-  if (msg.includes("not found") || msg.includes("command not found")) {
-    return "yt-dlp is not installed. Install it with: pip install yt-dlp";
-  }
-  return msg.split("\n").slice(0, 3).join(" ");
+  return candidates[0];
 }
 
-async function downloadFromUrl(url, destDir) {
-  const isYouTube = /youtube\.com|youtu\.be/.test(url);
-  const fileName = `download_${Date.now()}.mp3`;
-  const filePath = path.join(destDir, fileName);
+function isYouTubeUrl(url) {
+  return /(?:youtube\.com|youtu\.be)/i.test(url);
+}
 
-  if (isYouTube) {
-    const ytDlpVersion = checkYtDlp();
-    if (!ytDlpVersion) {
-      throw new Error("yt-dlp is not installed. Install it with: pip install yt-dlp");
-    }
+function isDirectAudioUrl(url) {
+  return /\.(mp3|wav|flac|ogg|m4a|webm|aac)(\?.*)?$/i.test(url);
+}
 
-    // Clean the URL - extract just the video ID to avoid playlist issues
-    let cleanUrl = url;
-    const videoIdMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (videoIdMatch) {
-      cleanUrl = `https://www.youtube.com/watch?v=${videoIdMatch[1]}`;
-    }
-
-    const attempts = [
-      // Attempt 1: Standard download
-      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist -o "${filePath}" "${cleanUrl}"`,
-      // Attempt 2: With no-check-certificate and geo-bypass
-      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist --no-check-certificate --geo-bypass -o "${filePath}" "${cleanUrl}"`,
-      // Attempt 3: Force IPv4, ignore errors
-      `yt-dlp -x --audio-format mp3 --audio-quality 0 --no-playlist --no-check-certificate --geo-bypass --force-ipv4 --ignore-errors -o "${filePath}" "${cleanUrl}"`
-    ];
-
-    let lastError = "";
-    for (let i = 0; i < attempts.length; i++) {
-      try {
-        execSync(attempts[i], { timeout: 300000, stdio: "pipe" });
-        // Verify file was created
-        if (fs.existsSync(filePath) && fs.statSync(filePath).size > 1024) {
-          return { filePath, originalName: "youtube_audio.mp3", sourceUrl: cleanUrl };
-        }
-      } catch (e) {
-        lastError = e.stderr ? e.stderr.toString() : e.message;
-        console.warn(`[GoMaa] yt-dlp attempt ${i + 1} failed:`, lastError.substring(0, 200));
-        // Clean up partial file
-        if (fs.existsSync(filePath)) {
-          try { fs.unlinkSync(filePath); } catch (_) {}
-        }
+function downloadDirect(url, outPath) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith("https:") ? https : http;
+    const req = client.get(url, { timeout: 30000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadDirect(res.headers.location, outPath).then(resolve).catch(reject);
       }
-    }
-
-    const advice = getYtDlpErrorAdvice(lastError);
-    throw new Error(`YouTube download failed after ${attempts.length} attempts. ${advice}`);
-  } else {
-    // Direct URL download using fetch
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      const buffer = await response.arrayBuffer();
-      if (buffer.byteLength < 1024) throw new Error("Downloaded file is too small (likely not an audio file)");
-      fs.writeFileSync(filePath, Buffer.from(buffer));
-      return { filePath, originalName: path.basename(url).split("?")[0] || "download.mp3", sourceUrl: url };
-    } catch (e) {
-      throw new Error(`Direct download failed: ${e.message}`);
-    }
-  }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+      const file = fs.createWriteStream(outPath);
+      res.pipe(file);
+      file.on("finish", () => { file.close(); resolve(outPath); });
+      file.on("error", reject);
+    });
+    req.on("error", reject);
+    req.on("timeout", () => { req.destroy(); reject(new Error("Request timeout")); });
+  });
 }
 
-module.exports = { downloadFromUrl, checkYtDlp };
+async function downloadFromUrl(url, outDir) {
+  // ── Direct audio URL: download straight away ──
+  if (isDirectAudioUrl(url)) {
+    console.log(`[GoMaa] Direct audio URL detected: ${url}`);
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const ext = path.extname(new URL(url).pathname) || ".mp3";
+    const outPath = path.join(outDir, `${id}${ext}`);
+    await downloadDirect(url, outPath);
+    const title = path.basename(new URL(url).pathname, ext) || "audio";
+    return {
+      filePath: outPath,
+      originalName: `${title}${ext}`,
+      title,
+      sourceUrl: url,
+      youtubeMetadata: { title: "", description: "", uploader: "", duration: 0, url }
+    };
+  }
+
+  // ── YouTube URL: fast-fail with honest message ──
+  if (isYouTubeUrl(url)) {
+    console.log(`[GoMaa] YouTube URL detected: ${url}`);
+    // Quick test: can yt-dlp even see this URL?
+    try {
+      const ytdlp = findYtDlp();
+      await execPromise(ytdlp, ["--dump-single-json", "--no-download", "--no-warnings", url], {}, 10000);
+    } catch (e) {
+      console.error("[GoMaa] YouTube metadata test failed:", e.message);
+      throw new Error(
+        "YouTube is actively blocking automated downloads. " +
+        "Please download the audio manually: run 'yt-dlp -x --audio-format mp3 \"" + url + "\"' " +
+        "then upload the MP3 file here."
+      );
+    }
+    // If metadata worked, proceed with download
+    const ytdlp = findYtDlp();
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const outTemplate = path.join(outDir, `${id}.%(ext)s`);
+    await execPromise(ytdlp, [
+      "-f", "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio",
+      "--extract-audio", "--audio-format", "mp3", "--audio-quality", "0",
+      "-o", outTemplate, "--no-warnings", "--newline", url
+    ], {}, 300000);
+    const files = fs.readdirSync(outDir).filter(f => f.startsWith(id));
+    const mp3File = files.find(f => f.endsWith(".mp3")) || files[0];
+    if (!mp3File) throw new Error("Download failed: no output file.");
+    const filePath = path.join(outDir, mp3File);
+    let meta = {};
+    try {
+      const metaJson = await execPromise(ytdlp, ["--dump-json", "--no-download", filePath], {}, 10000);
+      const jsonLine = metaJson.split("\n").find(l => l.trim().startsWith("{"));
+      if (jsonLine) meta = JSON.parse(jsonLine);
+    } catch (e) {}
+    const title = meta.title || path.basename(mp3File, ".mp3");
+    return {
+      filePath,
+      originalName: `${title}.mp3`,
+      title,
+      sourceUrl: url,
+      youtubeMetadata: {
+        title: meta.title || "",
+        description: meta.description || "",
+        uploader: meta.uploader || meta.channel || "",
+        duration: meta.duration || 0,
+        url
+      }
+    };
+  }
+
+  // ── Generic URL: try yt-dlp as fallback ──
+  console.log(`[GoMaa] Generic URL, trying yt-dlp: ${url}`);
+  const ytdlp = findYtDlp();
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const outTemplate = path.join(outDir, `${id}.%(ext)s`);
+  await execPromise(ytdlp, [
+    "-f", "bestaudio",
+    "--extract-audio", "--audio-format", "mp3",
+    "-o", outTemplate, "--no-warnings", url
+  ], {}, 300000);
+  const files = fs.readdirSync(outDir).filter(f => f.startsWith(id));
+  const mp3File = files.find(f => f.endsWith(".mp3")) || files[0];
+  if (!mp3File) throw new Error("Download failed.");
+  return {
+    filePath: path.join(outDir, mp3File),
+    originalName: "audio.mp3",
+    title: "audio",
+    sourceUrl: url,
+    youtubeMetadata: { title: "", description: "", uploader: "", duration: 0, url }
+  };
+}
+
+module.exports = { downloadFromUrl };

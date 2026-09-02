@@ -1,152 +1,95 @@
 {
   "ragas": [
     {
-      "name": "bilahari",
-      "number": 29,
-      "melakarta": "shankarabharanam",
-      "aroha": "S R2 G3 P D2 S",
-      "avaroha": "S N3 D2 P M1 G3 R2 S",
-      "mood": "meditative",
-      "gamakas": [
-        "kampita"
-      ],
+      "name": "nATA",
+      "parent": "nATA",
+      "melakartaNum": 36,
+      "aroha": "S R3 G3 M1 P D3 N3 S",
+      "avaroha": "S N3 D3 P M1 G3 R3 S",
+      "timeOfDay": "Morning",
+      "mood": "Heroic, energetic",
       "aliases": [
-        "bilahari"
+        "Nata",
+        "Natta"
       ]
     },
     {
       "name": "kalyani",
-      "number": 65,
-      "melakarta": "kalyani",
+      "parent": "kalyani",
+      "melakartaNum": 65,
       "aroha": "S R2 G3 M2 P D2 N3 S",
       "avaroha": "S N3 D2 P M2 G3 R2 S",
-      "mood": "devotional",
-      "gamakas": [
-        "kampita",
-        "andolita"
-      ],
+      "timeOfDay": "Evening",
+      "mood": "Devotional, majestic",
       "aliases": [
-        "kalyani",
-        "yaman"
+        "Kalyani",
+        "Yaman"
+      ]
+    },
+    {
+      "name": "sankarabharanam",
+      "parent": "sankarabharanam",
+      "melakartaNum": 29,
+      "aroha": "S R2 G3 M1 P D2 N3 S",
+      "avaroha": "S N3 D2 P M1 G3 R2 S",
+      "timeOfDay": "Any",
+      "mood": "Peaceful, auspicious",
+      "aliases": [
+        "Shankarabharanam",
+        "Bilaval"
       ]
     },
     {
       "name": "mohanam",
-      "number": 28,
-      "melakarta": "harikambhoji",
+      "parent": "sankarabharanam",
+      "melakartaNum": 29,
+      "janya": true,
       "aroha": "S R2 G3 P D2 S",
       "avaroha": "S D2 P G3 R2 S",
-      "mood": "joyful",
-      "gamakas": [
-        "kampita"
-      ],
+      "timeOfDay": "Morning",
+      "mood": "Joyful, playful",
       "aliases": [
-        "mohanam",
-        "bhupali"
+        "Mohanam",
+        "Bhoopali"
       ]
     },
     {
-      "name": "shankarabharanam",
-      "number": 29,
-      "melakarta": "shankarabharanam",
-      "aroha": "S R2 G3 M1 P D2 N3 S",
-      "avaroha": "S N3 D2 P M1 G3 R2 S",
-      "mood": "majestic",
-      "gamakas": [
-        "kampita"
-      ],
+      "name": "todi",
+      "parent": "todi",
+      "melakartaNum": 8,
+      "aroha": "S R1 G2 M1 P D1 N2 S",
+      "avaroha": "S N2 D1 P M1 G2 R1 S",
+      "timeOfDay": "Morning",
+      "mood": "Serious, contemplative",
       "aliases": [
-        "shankarabharanam",
-        "bilaval"
+        "Todi"
       ]
     },
     {
       "name": "kharaharapriya",
-      "number": 22,
-      "melakarta": "kharaharapriya",
+      "parent": "kharaharapriya",
+      "melakartaNum": 22,
       "aroha": "S R2 G2 M1 P D2 N2 S",
       "avaroha": "S N2 D2 P M1 G2 R2 S",
-      "mood": "compassionate",
-      "gamakas": [
-        "kampita"
-      ],
+      "timeOfDay": "Any",
+      "mood": "Compassionate, soothing",
       "aliases": [
-        "kharaharapriya",
-        "kafi"
+        "Kharaharapriya",
+        "Kafi"
       ]
     },
     {
-      "name": "harikambhoji",
-      "number": 28,
-      "melakarta": "harikambhoji",
-      "aroha": "S R2 G3 M1 P D2 N2 S",
-      "avaroha": "S N2 D2 P M1 G3 R2 S",
-      "mood": "bright",
-      "gamakas": [
-        "kampita"
-      ],
+      "name": "kaanaDaa",
+      "parent": "kharaharapriya",
+      "melakartaNum": 22,
+      "janya": true,
+      "aroha": "S R2 G2 M1 D N2 S",
+      "avaroha": "S N2 P M1 G2 M1 R2 S",
+      "timeOfDay": "Night",
+      "mood": "Devotional, majestic",
       "aliases": [
-        "harikambhoji",
-        "khamaj"
-      ]
-    },
-    {
-      "name": "hanumatodi",
-      "number": 8,
-      "melakarta": "hanumatodi",
-      "aroha": "S R1 G2 M1 P D1 N2 S",
-      "avaroha": "S N2 D1 P M1 G2 R1 S",
-      "mood": "melancholic",
-      "gamakas": [
-        "kampita"
-      ],
-      "aliases": [
-        "hanumatodi",
-        "bhairavi"
-      ]
-    },
-    {
-      "name": "natabhairavi",
-      "number": 20,
-      "melakarta": "natabhairavi",
-      "aroha": "S R2 G2 M1 P D1 N2 S",
-      "avaroha": "S N2 D1 P M1 G2 R2 S",
-      "mood": "serious",
-      "gamakas": [
-        "kampita"
-      ],
-      "aliases": [
-        "natabhairavi",
-        "asavari"
-      ]
-    },
-    {
-      "name": "kedaragaula",
-      "number": 21,
-      "melakarta": "kiravani",
-      "aroha": "S R2 M1 G3 M1 P N3 S",
-      "avaroha": "S N3 P M1 G3 R2 S",
-      "mood": "devotional",
-      "gamakas": [
-        "kampita"
-      ],
-      "aliases": [
-        "kedaragaula"
-      ]
-    },
-    {
-      "name": "sahana",
-      "number": 28,
-      "melakarta": "harikambhoji",
-      "aroha": "S R2 G3 M1 P M1 D2 N2 S",
-      "avaroha": "S N2 D2 P M1 G3 R2 S",
-      "mood": "compassionate",
-      "gamakas": [
-        "kampita",
-        "andolita"
-      ],
-      "aliases": [
-        "sahana"
+        "Kanada",
+        "Kannada"
       ]
     }
   ]

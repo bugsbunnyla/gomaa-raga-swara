@@ -1,95 +1,66 @@
 {
-  "mahaganapatim": {
-    "raga": "nATA",
-    "ragaNumber": 36,
-    "melakarta": "chalanata",
-    "tala": "Adi",
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R3 G3 M1 P D3 N3 S",
-    "avaroha": "S N3 P M1 G3 M1 R3 S",
-    "pallavi": {
-      "iast": "mahAgaNapatim manasA smarAmi vasiShTha vAma dEvAdi vanditam",
-      "telugu": "మహాగణపతిం మనసా స్మరామి వసిష్ఠ వామ దేవాది వందితం"
+  "compositions": [
+    {
+      "name": "Mahaganapatim",
+      "raga": "nATA",
+      "tala": "Adi",
+      "composer": "Muttuswaamee Dikshitar",
+      "melakartaNum": 36,
+      "aroha": "S R3 G3 M1 P D3 N3 S",
+      "avaroha": "S N3 D3 P M1 G3 R3 S",
+      "sahityam": {
+        "aalapana": "",
+        "pallavi": "Mahaganapatim manasa smarami",
+        "anupallavi": "Vasishtha vamadevaadi vandita",
+        "charanam": "Mooshika vaahana mudaakaraaatam"
+      },
+      "aliases": [
+        "mahaganapatim",
+        "nata"
+      ]
     },
-    "anupallavi": {
-      "iast": "mahAgaNapatim vasantavallabham mAhAraja yOga rAjAdi pUjitam",
-      "telugu": "మహాగణపతిం వసంతవల్లభం మాహారజ యోగ రాజాది పూజితం"
+    {
+      "name": "Rama_Namamu",
+      "raga": "kalyani",
+      "tala": "Adi",
+      "composer": "Thyagaraja",
+      "melakartaNum": 65,
+      "aroha": "S R2 G3 M2 P D2 N3 S",
+      "avaroha": "S N3 D2 P M2 G3 R2 S",
+      "sahityam": {
+        "pallavi": "Rama namamu",
+        "anupallavi": "Rama namamu",
+        "charanam": "Rama namamu"
+      },
+      "aliases": [
+        "rama namamu"
+      ]
     },
-    "charanam": {
-      "iast": "mahAgaNapatim mOhana guruguha vEdAnta upanishad sArAmRtam mahAgaNapatim",
-      "telugu": "మహాగణపతిం మోహన గురుగుహ వేదాంత ఉపనిషద్ సారామృతం మహాగణపతిం"
-    },
-    "sahityam": "mahAgaNapatim manasA smarAmi vasiShTha vAma dEvAdi vanditam mahAgaNapatim vasantavallabham mAhAraja yOga rAjAdi pUjitam mahAgaNapatim mOhana guruguha vEdAnta upanishad sArAmRtam mahAgaNapatim",
-    "chittaswarams": [
-      "S R3 G3 M1 P D3 N3 S . N3 D3 P M1 G3 R3 S",
-      "S R3 G3 M1 P , D3 N3 S N3 D3 P , M1 G3 R3 S"
-    ],
-    "manodharma_hints": {
-      "aalapana_raga": "nATA",
-      "neraval_line": "mahAgaNapatim manasA smarAmi",
-      "swarakalpana_scale": "S R3 G3 M1 P D3 N3 S"
+    {
+      "name": "Mamava_sada",
+      "raga": "kaanaDaa",
+      "tala": "Rupaka",
+      "composer": "Swaati Tirunaal",
+      "melakartaNum": 22,
+      "parent": "kharaharapriya",
+      "janya": true,
+      "aroha": "S R2 G2 M1 D N2 S",
+      "avaroha": "S N2 P M1 G2 M1 R2 S",
+      "sahityam": {
+        "aalapana": "",
+        "pallavi": "mAmava sadA janani mahiSAsura sUdani (amba)",
+        "anupallavi": "sOma bimba manOhara sumukhi sEvakAkhila kAma dAna nirata kaTAkSa vilAsini (amba)",
+        "charanam1": "pura vimata vadana pankEruha madhupE nArada mukha maunI nikara gEya caritE SarasIruhAsanAdi sura samudaya maNi cAru mauLi virAjita caraNAmbuja yugaLE",
+        "charanam2": "kanaka bhAsura divya kalApa rAjita gAtri vanaruha daLa darpa vibhanjana ruci nEtri munigaNa sammOhana mAnanIya mrduhAsE vinata jana kalpakavallari giri sutE",
+        "charanam3": "kuru mE kushalam sadA kamalanAbhAnujE niravadhi bhava khEda nivAraNa niratE cArunUtana ghana sadrusha rAjita vENi dAruNa danujALi dAraNa paTucaritE"
+      },
+      "aliases": [
+        "mamava",
+        "mamavasada",
+        "maamava",
+        "janani",
+        "mahishasura"
+      ]
     }
-  },
-  "mahaganapathim": {
-    "raga": "nATA",
-    "ragaNumber": 36,
-    "melakarta": "chalanata",
-    "tala": "Adi",
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R3 G3 M1 P D3 N3 S",
-    "avaroha": "S N3 P M1 G3 M1 R3 S",
-    "pallavi": {
-      "iast": "mahAgaNapatim manasA smarAmi vasiShTha vAma dEvAdi vanditam",
-      "telugu": "మహాగణపతిం మనసా స్మరామి వసిష్ఠ వామ దేవాది వందితం"
-    },
-    "anupallavi": {
-      "iast": "mahAgaNapatim vasantavallabham mAhAraja yOga rAjAdi pUjitam",
-      "telugu": "మహాగణపతిం వసంతవల్లభం మాహారజ యోగ రాజాది పూజితం"
-    },
-    "charanam": {
-      "iast": "mahAgaNapatim mOhana guruguha vEdAnta upanishad sArAmRtam mahAgaNapatim",
-      "telugu": "మహాగణపతిం మోహన గురుగుహ వేదాంత ఉపనిషద్ సారామృతం మహాగణపతిం"
-    },
-    "sahityam": "mahAgaNapatim manasA smarAmi vasiShTha vAma dEvAdi vanditam mahAgaNapatim vasantavallabham mAhAraja yOga rAjAdi pUjitam mahAgaNapatim mOhana guruguha vEdAnta upanishad sArAmRtam mahAgaNapatim",
-    "chittaswarams": [
-      "S R3 G3 M1 P D3 N3 S . N3 D3 P M1 G3 R3 S",
-      "S R3 G3 M1 P , D3 N3 S N3 D3 P , M1 G3 R3 S"
-    ],
-    "manodharma_hints": {
-      "aalapana_raga": "nATA",
-      "neraval_line": "mahAgaNapatim manasA smarAmi",
-      "swarakalpana_scale": "S R3 G3 M1 P D3 N3 S"
-    }
-  },
-  "ekadantam": {
-    "raga": "bilahari",
-    "ragaNumber": 29,
-    "melakarta": "shankarabharanam",
-    "tala": "Misra Chapu",
-    "composer": "Muttuswaamee Dikshitar",
-    "language": "Sanskrit",
-    "aroha": "S R2 G3 P D2 S",
-    "avaroha": "S N3 D2 P M1 G3 R2 S",
-    "pallavi": {
-      "iast": "Ekadantam bhajEham EkAnEka phala pradam",
-      "telugu": "ఏకదంతం భజేహం ఏకానేక ఫల ప్రదం"
-    },
-    "anupallavi": {
-      "iast": "pAkashAsanArAdhitam pAmara paNDitAdi nuta padam",
-      "telugu": "పాకశాసనారాధితం పామర పండితాది నుత పదం"
-    },
-    "charanam": {
-      "iast": "kailAsa nAtha kumAram kArtikEya manOharam hAlAsya kSEtra vEgavatI taTa vihAram haram kOlAhala guruguha sahitam kOTi mAra lAvaNya hitam mAlA kaNkaNAdi dharaNam mASA vallabhAmbA ramaNam",
-      "telugu": "కైలాస నాథ కుమారం కార్తికేయ మనోహరం హాలాస్య క్షేత్ర వేగవతీ తట విహారం హరం కోలాహల గురుగుహ సహితం కోటి మార లావణ్య హితం మాలా కంకణాది ధరణం మాసా వల్లభాంబా రమణం"
-    },
-    "sahityam": "Ekadantam bhajEham EkAnEka phala pradam pAkashAsanArAdhitam pAmara paNDitAdi nuta padam kailAsa nAtha kumAram kArtikEya manOharam hAlAsya kSEtra vEgavatI taTa vihAram haram kOlAhala guruguha sahitam kOTi mAra lAvaNya hitam mAlA kaNkaNAdi dharaNam mASA vallabhAmbA ramaNam",
-    "chittaswarams": [],
-    "manodharma_hints": {
-      "aalapana_raga": "bilahari",
-      "neraval_line": "Ekadantam bhajEham",
-      "swarakalpana_scale": "S R2 G3 P D2 S"
-    }
-  }
+  ]
 }
