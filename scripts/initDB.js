@@ -1,60 +1,87 @@
-"use strict";
-/**
- * GoMaa Raga Vidya v4.0 — Database Initialization
- */
+#!/usr/bin/env node
+const path = require('path');
 
-const fs = require("fs");
-const path = require("path");
-const sqlite3 = require("sqlite3").verbose();
+// Your custom sqlite wrapper
+const sqliteModule = require('../core/db/sqlite');
+const db = typeof sqliteModule === 'function' ? new sqliteModule(path.join(__dirname, '..', 'models', 'music.db')) : sqliteModule;
 
-const MODELS_DIR = path.join(__dirname, "../models");
-fs.mkdirSync(MODELS_DIR, { recursive: true });
+console.log('[init-db] Connected to:', path.join(__dirname, '..', 'models', 'music.db'));
 
-const DB_PATH = path.join(MODELS_DIR, "music.db");
-
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error("[GoMaa] Failed to open DB:", err.message);
-    process.exit(1);
+// Helper: execute SQL regardless of wrapper API
+function execSQL(sql) {
+  if (typeof db.exec === 'function') {
+    db.exec(sql);
+  } else if (typeof db.run === 'function') {
+    db.run(sql);
+  } else if (typeof db.prepare === 'function') {
+    db.prepare(sql).run();
+  } else {
+    throw new Error('No exec/run/prepare method found on db wrapper');
   }
-  console.log("[GoMaa] DB opened:", DB_PATH);
-});
+}
 
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS music (
+// Helper: query all rows regardless of wrapper API
+function queryAll(sql) {
+  if (typeof db.prepare === 'function') {
+    const stmt = db.prepare(sql);
+    if (typeof stmt.all === 'function') return stmt.all();
+    if (typeof stmt.get === 'function') {
+      const rows = []; let row;
+      while ((row = stmt.get()) !== undefined) rows.push(row);
+      return rows;
+    }
+    if (typeof stmt.each === 'function') {
+      const rows = [];
+      stmt.each((err, row) => { if (!err) rows.push(row); });
+      return rows;
+    }
+  }
+  if (typeof db.all === 'function') return db.all(sql);
+  if (typeof db.query === 'function') return db.query(sql);
+  throw new Error('No query method found on db wrapper');
+}
+
+// Create table if not exists
+const createTable = `
+  CREATE TABLE IF NOT EXISTS music (
     id TEXT PRIMARY KEY,
+    filename TEXT,
+    originalName TEXT,
+    compositionId TEXT,
     title TEXT,
-    artist TEXT,
     raga TEXT,
-    ragaNumber INTEGER,
-    aroha TEXT,
-    avaroha TEXT,
-    mood TEXT,
-    gamakas TEXT,
     tala TEXT,
-    tempo REAL,
+    composer TEXT,
     duration REAL,
-    filePath TEXT,
-    embedding TEXT,
-    chromaVector TEXT,
-    sections TEXT,
-    sheetMusic TEXT,
-    midiData TEXT,
-    language TEXT,
-    analysisJson TEXT,
-    lyricsJson TEXT,
-    transcriptionJson TEXT,
-    createdAt INTEGER
-  )`);
+    sahityam TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+try {
+  execSQL(createTable);
+  console.log('[init-db] Table "music" ensured.');
+} catch (e) {
+  console.log('[init-db] Table creation skipped (may already exist):', e.message);
+}
 
-  db.run(`CREATE INDEX IF NOT EXISTS idx_music_raga ON music(raga)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_music_tala ON music(tala)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_music_created ON music(createdAt)`);
+// Add missing columns
+try {
+  const columns = queryAll("PRAGMA table_info(music)");
+  const colNames = columns.map(c => c.name);
+  const needed = ['originalName', 'compositionId', 'sahityam'];
 
-  console.log("[GoMaa] Database initialized successfully.");
-});
+  needed.forEach(col => {
+    if (!colNames.includes(col)) {
+      execSQL(`ALTER TABLE music ADD COLUMN ${col} TEXT`);
+      console.log('[init-db] Added column:', col);
+    } else {
+      console.log('[init-db] Column already exists:', col);
+    }
+  });
+} catch (e) {
+  console.error('[init-db] Schema check failed:', e.message);
+  console.log('[init-db] If table does not exist, it will be created on first server start.');
+}
 
-db.close((err) => {
-  if (err) console.error("[GoMaa] DB close error:", err.message);
-  else console.log("[GoMaa] DB connection closed.");
-});
+console.log('[init-db] Done.');
+if (typeof db.close === 'function') db.close();

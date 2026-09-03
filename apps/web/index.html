@@ -1,614 +1,440 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GoMaa Raga Vidya v4.0.2-patch5</title>
-<style>
-  :root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#667eea;--text:#e0e0ff;--muted:#8888aa;--good:#4caf50;--warn:#ff9800;--bad:#f44336;}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-  header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:24px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)}
-  header h1{margin:0;font-size:1.6rem;letter-spacing:1px}
-  header p{margin:6px 0 0;opacity:.9;font-size:.9rem}
-  .container{max-width:1100px;margin:0 auto;padding:20px}
-  .upload-area{border:2px dashed var(--accent);border-radius:16px;padding:32px;text-align:center;background:var(--card);margin-bottom:20px;transition:.2s}
-  .upload-area:hover{border-color:#8a9eff;background:#1f1f3a}
-  .btn{background:var(--accent);color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-size:.95rem;transition:.2s;margin:4px}
-  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,.4)}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn-secondary{background:#2a2a4a}
-  .btn-secondary:hover:not(:disabled){background:#3a3a6a}
-  .btn-record{background:var(--bad)}
-  .btn-record:hover:not(:disabled){background:#d32f2f}
-  .btn-record.recording{animation:pulse 1.5s infinite;background:#ff5252}
-  @keyframes pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
-  input[type="file"]{display:none}
-  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-  .tab{background:var(--card);border:none;color:var(--text);padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;transition:.2s}
-  .tab.active{background:var(--accent);font-weight:600}
-  .panel{display:none;background:var(--card);border-radius:12px;padding:20px;margin-bottom:16px}
-  .panel.active{display:block}
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:700px){.grid-2{grid-template-columns:1fr}}
-  .info-box{background:#12122a;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:14px}
-  .badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:.75rem;background:#2a2a4a;margin:2px}
-  .badge-high{background:var(--good);color:#000}
-  .badge-med{background:var(--warn);color:#000}
-  .badge-low{background:var(--bad)}
-  .session-card{background:#12122a;border:1px solid #2a2a4a;border-radius:10px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.2s}
-  .session-card:hover{border-color:var(--accent)}
-  .session-card h4{margin:0 0 6px}
-  .session-card .meta{color:var(--muted);font-size:.8rem;margin-bottom:6px}
-  .error{color:var(--bad);background:#2a0a0a;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
-  .loading{color:var(--accent);padding:20px;text-align:center}
-  table{width:100%;border-collapse:collapse;font-size:.85rem}
-  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #2a2a4a}
-  th{color:var(--accent);font-weight:600}
-  .swara-line{font-family:"Courier New",monospace;font-size:.9rem;background:#0a0a1a;padding:10px;border-radius:6px;white-space:pre-wrap;word-break:break-all}
-  .section-title{color:var(--accent);font-weight:600;margin-top:14px;margin-bottom:6px}
-  .cycle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:12px}
-  .cycle-box{background:#0f0f1f;border:1px solid #2a2a4a;border-radius:8px;padding:8px;font-size:.8rem}
-  .clap{color:var(--good);font-weight:bold}
-  .wave{color:var(--warn)}
-  #osmdContainer{width:100%;min-height:500px;background:#fafafa;border-radius:10px;overflow:auto;border:1px solid #2a2a4a}
-  .score-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-  audio{width:100%;margin-top:10px;height:36px;border-radius:18px}
-  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px;vertical-align:middle}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:10px}
-  .input-row input{padding:8px 12px;border-radius:6px;border:1px solid #2a2a4a;background:#0f0f1a;color:var(--text);width:280px;max-width:100%}
-  .recording-timer{color:var(--bad);font-size:1.2rem;font-weight:600;margin-top:8px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoMaa Raga Vidya v4.0.2</title>
+  <script src="https://unpkg.com/opensheetmusicdisplay@0.9.5/build/opensheetmusicdisplay.min.js"></script>
+  <style>
+    :root {
+      --primary: #2d6a4f; --primary-light: #40916c; --accent: #d8f3dc;
+      --bg: #f8f9fa; --card: #ffffff; --text: #212529; --text-muted: #6c757d;
+      --border: #dee2e6; --danger: #dc3545; --warning: #ffc107; --info: #0dcaf0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    header { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; padding: 1.5rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    header h1 { font-size: 1.5rem; font-weight: 600; }
+    header p { opacity: 0.9; font-size: 0.9rem; margin-top: 0.25rem; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+    .upload-section { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .upload-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .field-group { flex: 1; min-width: 220px; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="file"], input[type="url"], input[type="text"], select, textarea {
+      width: 100%; padding: 0.65rem 0.9rem; border: 2px solid var(--border); border-radius: 8px; font-size: 0.92rem; transition: border-color 0.2s; font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-light); }
+    .btn { padding: 0.65rem 1.25rem; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-secondary { background: var(--accent); color: var(--primary); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-info { background: var(--info); color: #000; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .tabs { display: flex; gap: 0.15rem; background: var(--card); padding: 0.4rem; border-radius: 12px 12px 0 0; border-bottom: 2px solid var(--border); overflow-x: auto; flex-wrap: wrap; }
+    .tab-btn { padding: 0.6rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; border-radius: 8px; white-space: nowrap; transition: all 0.2s; font-size: 0.85rem; }
+    .tab-btn:hover { background: var(--bg); color: var(--text); }
+    .tab-btn.active { background: var(--accent); color: var(--primary); }
+    .tab-panel { background: var(--card); padding: 1.5rem; border-radius: 0 0 12px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: none; min-height: 300px; }
+    .tab-panel.active { display: block; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+    .result-card { background: var(--bg); padding: 0.9rem; border-radius: 8px; border-left: 4px solid var(--primary-light); }
+    .result-card h4 { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.2rem; }
+    .result-card p { font-size: 1rem; font-weight: 700; color: var(--primary); }
+    .swara-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .swara-card { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px; padding: 1rem; }
+    .swara-card h3 { font-size: 0.8rem; text-transform: uppercase; color: #d48806; margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
+    .swara-line { font-family: 'Courier New', monospace; font-size: 1.1rem; color: var(--text); line-height: 1.6; word-break: break-word; }
+    .sahityam-text { font-style: italic; color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); }
+    #score-container { width: 100%; min-height: 400px; overflow-x: auto; }
+    .score-controls { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+    #audio-player { width: 300px; max-width: 100%; }
+    .saved-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .saved-card { background: var(--bg); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); }
+    .saved-card h4 { color: var(--primary); margin-bottom: 0.25rem; }
+    .saved-card small { color: var(--text-muted); }
+    .saved-card audio { width: 100%; margin-top: 0.5rem; }
+    .raga-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .raga-table th, .raga-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .raga-table th { background: var(--accent); color: var(--primary); font-weight: 600; position: sticky; top: 0; }
+    .raga-table tr:hover { background: var(--bg); }
+    .melakarta { font-weight: 700; color: var(--primary); }
+    .janya { color: var(--text-muted); font-size: 0.8rem; }
+    .compose-form { max-width: 700px; }
+    .compose-form .field { margin-bottom: 1rem; }
+    .compose-form textarea { min-height: 120px; }
+    .hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .record-section { text-align: center; padding: 2rem; }
+    #record-timer { font-size: 2.5rem; font-weight: 800; color: var(--primary); margin: 1rem 0; font-variant-numeric: tabular-nums; }
+    #status { padding: 0.75rem 1rem; border-radius: 8px; margin-top: 0.75rem; display: none; font-size: 0.9rem; }
+    #status.info { display: block; background: #e7f3ff; color: #004085; border: 1px solid #b8daff; }
+    #status.success { display: block; background: var(--accent); color: var(--primary); border: 1px solid var(--primary-light); }
+    #status.error { display: block; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .hidden { display: none !important; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .badge-raga { background: var(--accent); color: var(--primary); }
+    .badge-tala { background: #e7f3ff; color: #004085; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) {
+      .container { padding: 0.75rem; }
+      .upload-row, .two-col { flex-direction: column; grid-template-columns: 1fr; }
+      .field-group { min-width: 100%; }
+      .tabs { flex-wrap: nowrap; overflow-x: scroll; }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <h1>🎵 GoMaa Raga Vidya</h1>
-  <p>Carnatic &amp; Western Music Analysis Engine — v4.0.2-patch5</p>
-</header>
+  <header>
+    <h1>🎵 GoMaa Raga Vidya</h1>
+    <p>Carnatic Music Analysis, Recognition & Composition</p>
+  </header>
 
-<div class="container">
-  <div class="upload-area" id="dropZone">
-    <p style="font-size:1.1rem;margin-bottom:12px">Drop an audio file, paste a URL, record live, or click to browse</p>
-    <input type="file" id="fileInput" accept="audio/*">
-    <button class="btn" id="chooseFileBtn" onclick="document.getElementById('fileInput').click()">📁 Choose File</button>
-    <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">🎙 Record Live</button>
-    <div class="recording-timer" id="recordTimer" style="display:none">00:00</div>
-    <div class="input-row">
-      <input type="text" id="urlInput" placeholder="YouTube URL or direct audio URL (.mp3, .wav)...">
-      <button class="btn btn-secondary" id="analyzeUrlBtn" onclick="submitUrl()">Analyze URL</button>
-    </div>
-    <div id="uploadStatus" style="margin-top:10px;color:var(--muted);font-size:.85rem;white-space:pre-wrap;min-height:24px"></div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="results">Results</button>
-    <button class="tab" data-tab="lyrics">Lyrics &amp; Swara</button>
-    <button class="tab" data-tab="notation">Notation</button>
-    <button class="tab" data-tab="score">Score</button>
-    <button class="tab" data-tab="processing">Processing</button>
-    <button class="tab" data-tab="saved">Saved</button>
-  </div>
-
-  <div class="panel active" id="results-panel">
-    <div id="resultsContainer"><p style="color:var(--muted);text-align:center;padding:30px">No analysis yet. Upload audio or enter a URL above.</p></div>
-  </div>
-  <div class="panel" id="lyrics-panel">
-    <div id="lyricsContainer"><p style="color:var(--muted);text-align:center;padding:30px">No data yet.</p></div>
-  </div>
-  <div class="panel" id="notation-panel">
-    <div id="notationContainer"><p style="color:var(--muted);text-align:center;padding:30px">No notation yet.</p></div>
-  </div>
-  <div class="panel" id="score-panel">
-    <div class="result">
-      <h3 style="color:var(--accent);margin-bottom:16px">Music Score — Carnatic &amp; Western</h3>
-      <div class="info-box">
-        <strong>MuseScore Compatible:</strong> Download the MusicXML file and open it in MuseScore for full editing and playback.
-        <div style="margin-top:8px">
-          <a id="musescoreDownload" href="#" class="btn btn-secondary" style="text-decoration:none;display:inline-block">Download MusicXML</a>
-          <a id="midiDownload" href="#" class="btn btn-secondary" style="text-decoration:none;display:inline-block">Download MIDI</a>
+  <div class="container">
+    <!-- Upload Section -->
+    <div class="upload-section">
+      <div class="upload-row">
+        <div class="field-group">
+          <label for="audio-file">Upload Audio (MP3, WAV, WEBM)</label>
+          <input type="file" id="audio-file" accept="audio/*" onchange="app.onFileSelected()">
         </div>
+        <div class="field-group">
+          <label for="audio-url">Or Paste Audio / YouTube URL</label>
+          <input type="url" id="audio-url" placeholder="https://... or https://youtube.com/watch?v=..." oninput="app.onUrlInput()">
+        </div>
+        <button class="btn btn-primary" id="analyze-btn" onclick="app.analyze()">🔍 Analyze</button>
+        <button class="btn btn-secondary" id="record-btn" onclick="app.toggleRecord()">🎙 Record Live</button>
       </div>
+      <div id="status"></div>
+    </div>
+
+    <!-- Recording Panel -->
+    <div id="record-panel" class="upload-section hidden">
+      <div class="record-section">
+        <h2>🎙 Live Recording</h2>
+        <div id="record-timer">00:00</div>
+        <button class="btn btn-danger" id="stop-record-btn" onclick="app.stopRecording()">⏹ Stop & Analyze</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="results" onclick="app.switchTab('results')">📊 Results</button>
+      <button class="tab-btn" data-tab="swaras" onclick="app.switchTab('swaras')">🎵 Swaras</button>
+      <button class="tab-btn" data-tab="lyrics" onclick="app.switchTab('lyrics')">📜 Lyrics</button>
+      <button class="tab-btn" data-tab="score" onclick="app.switchTab('score')">🎼 Score</button>
+      <button class="tab-btn" data-tab="compose" onclick="app.switchTab('compose')">✍️ Compose</button>
+      <button class="tab-btn" data-tab="saved" onclick="app.switchTab('saved')">💾 Saved</button>
+      <button class="tab-btn" data-tab="ragachart" onclick="app.switchTab('ragachart')">📋 Raga Chart</button>
+    </div>
+
+    <!-- RESULTS PANEL -->
+    <div id="results-panel" class="tab-panel active">
+      <p style="color: var(--text-muted);">Upload audio or enter a URL to see analysis results.</p>
+    </div>
+
+    <!-- SWARAS PANEL -->
+    <div id="swaras-panel" class="tab-panel">
+      <p style="color: var(--text-muted);">Detected Carnatic swaras will appear here after analysis.</p>
+    </div>
+
+    <!-- LYRICS PANEL -->
+    <div id="lyrics-panel" class="tab-panel">
+      <p style="color: var(--text-muted);">Sahityam (lyrics) will appear here after analysis.</p>
+    </div>
+
+    <!-- SCORE PANEL -->
+    <div id="score-panel" class="tab-panel">
       <div class="score-controls">
-        <button class="btn" id="playScoreBtn" onclick="toggleScorePlayback()">▶ Play Score</button>
-        <span id="scoreStatus" style="color:var(--muted);font-size:.85rem">Load audio to enable playback</span>
+        <audio id="audio-player" controls></audio>
+        <button class="btn btn-primary" id="play-score-btn" onclick="app.playScore()">▶ Play Score</button>
       </div>
-      <audio id="scoreAudio" controls preload="none" style="display:none"></audio>
-      <div id="osmdContainer">
-        <p style="color:#8888aa;text-align:center;padding:60px">No score yet. Import and analyze audio first.</p>
+      <div id="score-container"></div>
+    </div>
+
+    <!-- COMPOSE PANEL -->
+    <div id="compose-panel" class="tab-panel">
+      <h2 style="margin-bottom: 1rem;">✍️ Compose New Varnam / Kriti</h2>
+      <div class="compose-form">
+        <div class="two-col">
+          <div class="field">
+            <label>Title</label>
+            <input type="text" id="compose-title" placeholder="e.g., Mamava Sada Janani">
+          </div>
+          <div class="field">
+            <label>Composer</label>
+            <input type="text" id="compose-composer" placeholder="e.g., Swaati Tirunaal">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label>Raga <span class="hint">(autocomplete from chart)</span></label>
+            <input type="text" id="compose-raga" list="raga-datalist" placeholder="Start typing raga name..." oninput="app.onRagaInput()">
+            <datalist id="raga-datalist"></datalist>
+          </div>
+          <div class="field">
+            <label>Janya Of <span class="hint">(auto-filled)</span></label>
+            <input type="text" id="compose-parent" readonly placeholder="Parent melakarta">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label>Tala</label>
+            <select id="compose-tala">
+              <option value="">Select Tala</option>
+              <option value="Adi">Adi</option>
+              <option value="Rupaka">Rupaka</option>
+              <option value="Misra Chapu">Misra Chapu</option>
+              <option value="Khanda Chapu">Khanda Chapu</option>
+              <option value="Dhruva">Dhruva</option>
+              <option value="Matya">Matya</option>
+              <option value="Jhampa">Jhampa</option>
+              <option value="Triputa">Triputa</option>
+              <option value="Ata">Ata</option>
+              <option value="Eka">Eka</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Instrument</label>
+            <select id="compose-instrument">
+              <option value="">Select Instrument</option>
+              <option value="Veena">Veena</option>
+              <option value="Violin">Violin</option>
+              <option value="Flute">Flute</option>
+              <option value="Nadaswaram">Nadaswaram</option>
+              <option value="Mridangam">Mridangam</option>
+              <option value="Ghatam">Ghatam</option>
+              <option value="Voice">Voice</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Arohana <span class="hint">(auto-filled from raga)</span></label>
+          <input type="text" id="compose-arohana" readonly>
+        </div>
+        <div class="field">
+          <label>Avarohana <span class="hint">(auto-filled from raga)</span></label>
+          <input type="text" id="compose-avarohana" readonly>
+        </div>
+        <div class="field">
+          <label>Pallavi Lyrics</label>
+          <textarea id="compose-pallavi" placeholder="Enter pallavi sahityam..."></textarea>
+        </div>
+        <div class="field">
+          <label>Anupallavi Lyrics</label>
+          <textarea id="compose-anupallavi" placeholder="Enter anupallavi sahityam..."></textarea>
+        </div>
+        <div class="field">
+          <label>Charanam Lyrics</label>
+          <textarea id="compose-charanam" placeholder="Enter charanam sahityam..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="app.saveComposition()">💾 Save Composition to DB</button>
+        <button class="btn btn-info" onclick="app.aiSuggest()">✨ AI Suggest Swaras</button>
+        <span id="compose-status"></span>
+      </div>
+    </div>
+
+    <!-- SAVED PANEL -->
+    <div id="saved-panel" class="tab-panel">
+      <h2 style="margin-bottom: 1rem;">💾 Saved Analyses & Compositions</h2>
+      <div id="saved-list-container">
+        <p style="color: var(--text-muted);">Loading saved items...</p>
+      </div>
+    </div>
+
+    <!-- RAGA CHART PANEL -->
+    <div id="ragachart-panel" class="tab-panel">
+      <h2 style="margin-bottom: 1rem;">📋 Melakarta & Janya Reference</h2>
+      <div class="field-group" style="max-width: 400px; margin-bottom: 1rem;">
+        <label>Search Raga</label>
+        <input type="text" id="raga-search" placeholder="Type raga name..." oninput="app.filterRagaChart()">
+      </div>
+      <div style="overflow-x: auto; max-height: 70vh;">
+        <table class="raga-table" id="raga-chart-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Melakarta</th>
+              <th>Arohana</th>
+              <th>Avarohana</th>
+              <th>Common Janyas</th>
+            </tr>
+          </thead>
+          <tbody id="raga-chart-body">
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
-  <div class="panel" id="processing-panel">
-    <div id="processingContainer"><p style="color:var(--muted);text-align:center;padding:30px">No processing info yet.</p></div>
-  </div>
-  <div class="panel" id="saved-panel">
-    <div id="savedContainer"><p style="color:var(--muted);text-align:center;padding:30px">No saved analyses yet.</p></div>
-  </div>
-</div>
 
-<script>
-const API_BASE = window.location.origin.includes("localhost") ? "http://localhost:3000" : "";
-let currentResult = null;
-let osmdInstance = null;
-let scoreAudio = document.getElementById("scoreAudio");
-let isPlaying = false;
-let playbackInterval = null;
-let isProcessing = false;
-
-// Live recording state
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordStartTime = 0;
-let recordTimerInterval = null;
-let isRecording = false;
-
-function setProcessing(val, msg) {
-  isProcessing = val;
-  document.getElementById("chooseFileBtn").disabled = val;
-  document.getElementById("analyzeUrlBtn").disabled = val;
-  document.getElementById("recordBtn").disabled = val;
-  document.getElementById("urlInput").disabled = val;
-  document.getElementById("fileInput").disabled = val;
-  if (msg) document.getElementById("uploadStatus").innerHTML = msg;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// LIVE RECORDING
-// ═══════════════════════════════════════════════════════════════════════
-async function toggleRecording() {
-  const btn = document.getElementById("recordBtn");
-  const timer = document.getElementById("recordTimer");
-
-  if (isRecording) {
-    // Stop recording
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    return;
-  }
-
-  // Start recording
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    recordedChunks = [];
-
-    mediaRecorder.ondataavailable = function(e) {
-      if (e.data.size > 0) recordedChunks.push(e.data);
-    };
-
-    mediaRecorder.onstop = function() {
-      const blob = new Blob(recordedChunks, { type: "audio/webm" });
-      const file = new File([blob], "live_recording.webm", { type: "audio/webm" });
-      uploadFile(file);
-      stream.getTracks().forEach(t => t.stop());
-      isRecording = false;
-      btn.textContent = "🎙 Record Live";
-      btn.classList.remove("recording");
-      timer.style.display = "none";
-      clearInterval(recordTimerInterval);
-    };
-
-    mediaRecorder.start();
-    isRecording = true;
-    btn.textContent = "⏹ Stop Recording";
-    btn.classList.add("recording");
-    timer.style.display = "block";
-    recordStartTime = Date.now();
-    recordTimerInterval = setInterval(function() {
-      const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
-      const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
-      const secs = String(elapsed % 60).padStart(2, "0");
-      timer.textContent = mins + ":" + secs;
-    }, 1000);
-  } catch (e) {
-    alert("Microphone access denied or not available: " + e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// TAB NAVIGATION
-// ═══════════════════════════════════════════════════════════════════════
-document.querySelectorAll(".tab").forEach(function(tab) {
-  tab.addEventListener("click", function() {
-    document.querySelectorAll(".tab").forEach(function(t) { t.classList.remove("active"); });
-    document.querySelectorAll(".panel").forEach(function(p) { p.classList.remove("active"); });
-    tab.classList.add("active");
-    document.getElementById(tab.dataset.tab + "-panel").classList.add("active");
-    if (tab.dataset.tab === "saved") loadSavedAnalyses();
-    if (tab.dataset.tab === "score" && currentResult) displayScore(currentResult);
-  });
-});
-
-const dropZone = document.getElementById("dropZone");
-const fileInput = document.getElementById("fileInput");
-const uploadStatus = document.getElementById("uploadStatus");
-
-dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.style.borderColor = "#8a9eff"; });
-dropZone.addEventListener("dragleave", () => { dropZone.style.borderColor = ""; });
-dropZone.addEventListener("drop", e => {
-  e.preventDefault();
-  dropZone.style.borderColor = "";
-  if (isProcessing) return;
-  const files = e.dataTransfer.files;
-  if (files.length) uploadFile(files[0]);
-});
-fileInput.addEventListener("change", e => { if (e.target.files.length && !isProcessing) uploadFile(e.target.files[0]); });
-
-// ═══════════════════════════════════════════════════════════════════════
-// URL ANALYSIS
-// ═══════════════════════════════════════════════════════════════════════
-function submitUrl() {
-  if (isProcessing) return;
-  const url = document.getElementById("urlInput").value.trim();
-  if (!url) return alert("Please enter a URL");
-
-  const isYouTube = /(?:youtube\.com|youtu\.be)/i.test(url);
-  const isDirectAudio = /\.(mp3|wav|flac|ogg|m4a|webm|aac)(\?.*)?$/i.test(url);
-
-  let statusMsg = '<span class="spinner"></span>';
-  if (isYouTube) {
-    statusMsg += '<span style="color:var(--warn)">YouTube detected. Downloading audio (may take 30-90s)...</span>';
-  } else if (isDirectAudio) {
-    statusMsg += '<span style="color:var(--accent)">Downloading direct audio file...</span>';
-  } else {
-    statusMsg += '<span style="color:var(--accent)">Downloading from URL...</span>';
-  }
-  setProcessing(true, statusMsg);
-
-  fetch(API_BASE + "/api/recognize", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url })
-  })
-  .then(async function(r) {
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || `Server error ${r.status}: ${JSON.stringify(data)}`);
-    return data;
-  })
-  .then(function(data) { handleResult(data); })
-  .catch(function(err) {
-    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(err.message) + '</span>';
-    console.error("[GoMaa Client]", err);
-  })
-  .finally(function() { setProcessing(false); });
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// FILE UPLOAD
-// ═══════════════════════════════════════════════════════════════════════
-function uploadFile(file) {
-  if (isProcessing) return;
-  setProcessing(true, '<span class="spinner"></span><span style="color:var(--accent)">Uploading ' + escapeHtml(file.name) + '...</span>');
-  const fd = new FormData();
-  fd.append("audio", file);
-  fetch(API_BASE + "/api/recognize", { method: "POST", body: fd })
-  .then(async function(r) {
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.error || `Server error ${r.status}: ${JSON.stringify(data)}`);
-    return data;
-  })
-  .then(function(data) { handleResult(data); })
-  .catch(function(err) {
-    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(err.message) + '</span>';
-    console.error("[GoMaa Client]", err);
-  })
-  .finally(function() { setProcessing(false); });
-}
-
-function handleResult(data) {
-  if (data.error) {
-    uploadStatus.innerHTML = '<span style="color:var(--bad)">Error: ' + escapeHtml(data.error) + '</span>';
-    return;
-  }
-  currentResult = data;
-  uploadStatus.innerHTML = '<span style="color:var(--good)">✓ Analysis complete in ' + (data.elapsedMs || 0) + 'ms</span>';
-  displayResults(data);
-  displayLyricsAndSwara(data);
-  displayNotation(data);
-  displayProcessing(data);
-  displayScore(data);
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  document.querySelector('[data-tab="results"]').classList.add("active");
-  document.getElementById("results-panel").classList.add("active");
-}
-
-function escapeHtml(t) {
-  if (!t) return "";
-  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// RESULTS TAB
-// ═══════════════════════════════════════════════════════════════════════
-function displayResults(data) {
-  const compBadge = data.compositionMatch
-    ? '<span class="badge badge-high">Composition: ' + escapeHtml(data.compositionMatch.name) + "</span>"
-    : "";
-  const instHtml = (data.instruments || []).map(i =>
-    '<span class="badge">' + escapeHtml(i.instrument) + " (" + i.percentage + "%)</span>"
-  ).join(" ");
-  document.getElementById("resultsContainer").innerHTML =
-    '<div class="info-box">' +
-      '<div style="font-size:1.2rem;font-weight:600;margin-bottom:8px">' + escapeHtml(data.raga) + "</div>" +
-      '<div>Parent: ' + escapeHtml(data.parent) + "</div>" +
-      '<div>Tala: ' + escapeHtml(data.tala) + " (" + data.beatsPerCycle + " beats)</div>" +
-      '<div>Tempo: ' + data.bpm + " BPM</div>" +
-      '<div>Confidence: ' + data.tempoConfidence + "</div>" +
-      '<div>Duration: ' + Math.round(data.duration * 10) / 10 + "s</div>" +
-      '<div style="margin-top:8px">' + compBadge + "</div>" +
-    '</div>' +
-    '<div class="info-box">' +
-      '<div class="section-title">Aroha</div><div class="swara-line">' + escapeHtml(data.aroha) + "</div>" +
-      '<div class="section-title">Avaroha</div><div class="swara-line">' + escapeHtml(data.avaroha) + "</div>" +
-    '</div>' +
-    '<div class="info-box">' +
-      '<div class="section-title">Scale Detection (Chroma)</div>' +
-      '<div>' + (data.scale?.noteNames || []).map(n => '<span class="badge">' + n + "</span>").join(" ") + "</div>" +
-      '<div style="margin-top:6px;color:var(--muted);font-size:.8rem">Detected semis: [' + (data.scale?.detectedSemitones || []).join(", ") + "] | Confidence: " + (data.scale?.confidence || 0) + "</div>" +
-    '</div>' +
-    '<div class="info-box">' +
-      '<div class="section-title">Instruments Detected</div>' +
-      '<div>' + (instHtml || "None detected") + "</div>" +
-    '</div>';
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// LYRICS & SWARA TAB — displays ALL sahityam keys dynamically
-// ═══════════════════════════════════════════════════════════════════════
-function displayLyricsAndSwara(data) {
-  const s = data.swaras || {};
-  const sah = data.sahityam || {};
-  let html = "";
-
-  // Display swara sections
-  const swaraSections = [
-    { key: "aalapana", title: "Aalapana", showLyrics: false },
-    { key: "pallavi", title: "Pallavi", showLyrics: true },
-    { key: "anupallavi", title: "Anupallavi", showLyrics: true },
-    { key: "charanam", title: "Charanam", showLyrics: true },
-    { key: "chittaswarams", title: "Chittaswarams", showLyrics: false },
-    { key: "manodharma", title: "Manodharma (Kalpana Swaras)", showLyrics: false }
-  ];
-
-  swaraSections.forEach(sec => {
-    const section = s[sec.key];
-    if (!section) return;
-    html += '<div class="section-title">' + sec.title + "</div>";
-    if (section.gamaka) html += '<div style="font-size:.8rem;color:var(--warn);margin-bottom:4px">Gamaka: ' + escapeHtml(section.gamaka) + "</div>";
-    html += '<div class="swara-line">' + escapeHtml(section.swaras) + "</div>";
-    if (sec.showLyrics && section.lyrics) {
-      html += '<div style="margin-top:6px;font-style:italic;color:var(--muted)">' + escapeHtml(section.lyrics) + "</div>";
-    }
-    if (section.duration) {
-      html += '<div style="font-size:.8rem;color:var(--muted);margin-top:4px">Duration: ' + section.duration + "s</div>";
-    }
-  });
-
-  // Display all sahityam lyrics dynamically (including charanam1, charanam2, etc.)
-  if (sah && Object.keys(sah).length > 0) {
-    html += '<div class="section-title" style="margin-top:20px">Sahityam (Lyrics)</div>';
-    const keyOrder = ["aalapana", "pallavi", "anupallavi", "charanam", "charanam1", "charanam2", "charanam3", "charanam4"];
-    const displayed = new Set();
-
-    // First, show in preferred order
-    keyOrder.forEach(key => {
-      if (sah[key]) {
-        const title = key.charAt(0).toUpperCase() + key.slice(1).replace(/(\d)/, " $1");
-        html += '<div class="section-title" style="font-size:.9rem;margin-top:10px">' + title + "</div>";
-        html += '<div style="font-style:italic;color:var(--text);line-height:1.6">' + escapeHtml(sah[key]).replace(/\n/g, "<br>") + "</div>";
-        displayed.add(key);
+  <script>
+    class App {
+      constructor() {
+        this.currentData = null;
+        this.scoreRenderer = null;
+        this.recorder = new LiveRecorder();
+        this.ragas = [];
+        this.init();
       }
-    });
-
-    // Then show any remaining keys
-    Object.keys(sah).forEach(key => {
-      if (!displayed.has(key) && sah[key]) {
-        const title = key.charAt(0).toUpperCase() + key.slice(1);
-        html += '<div class="section-title" style="font-size:.9rem;margin-top:10px">' + title + "</div>";
-        html += '<div style="font-style:italic;color:var(--text);line-height:1.6">' + escapeHtml(sah[key]).replace(/\n/g, "<br>") + "</div>";
+      async init() {
+        window.addEventListener('analysisComplete', (e) => {
+          this.currentData = e.detail;
+          this.renderResults(e.detail);
+          this.renderSwaras(e.detail);
+          this.renderLyrics(e.detail);
+          if (e.detail.musicXml) this.loadScore(e.detail.musicXml, e.detail.audioUrl);
+        });
+        await this.loadRagaChart();
+        this.loadSavedList();
       }
-    });
-  }
-
-  if (!html) html = '<p style="color:var(--muted);text-align:center;padding:20px">No swara or lyrics data available.</p>';
-  document.getElementById("lyricsContainer").innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// NOTATION TAB
-// ═══════════════════════════════════════════════════════════════════════
-function displayNotation(data) {
-  const s = data.swaras || {};
-  const bpC = data.beatsPerCycle || 8;
-  const sections = ["pallavi", "anupallavi", "charanam", "aalapana", "chittaswarams", "manodharma"];
-  let html = "";
-  html += '<div class="info-box">' +
-    '<div class="section-title">Carnatic Notation</div>' +
-    '<div>Aroha: ' + escapeHtml(data.aroha) + "</div>" +
-    '<div>Avaroha: ' + escapeHtml(data.avaroha) + "</div>" +
-    '<div class="section-title" style="margin-top:10px">Swara Line</div>' +
-    '<div class="swara-line">' + escapeHtml(s.swaraLine || "") + "</div>" +
-  '</div>';
-  sections.forEach(name => {
-    const sec = s[name];
-    if (!sec || !sec.swaras) return;
-    const tokens = sec.swaras.split(/\s+/).filter(Boolean);
-    if (!tokens.length) return;
-    html += '<div class="section-title">' + name.charAt(0).toUpperCase() + name.slice(1) + "</div>";
-    html += '<div class="cycle-grid">';
-    let cycle = 1;
-    for (let i = 0; i < tokens.length; i += bpC) {
-      const chunk = tokens.slice(i, i + bpC);
-      let inner = "";
-      for (let j = 0; j < chunk.length; j++) {
-        const isClap = j === 0;
-        const isWave = j === Math.floor(bpC / 2);
-        const mark = isClap ? '<span class="clap">👏</span>' : (isWave ? '<span class="wave">👋</span>' : "");
-        inner += '<div>' + mark + " " + escapeHtml(chunk[j]) + "</div>";
+      switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+        document.getElementById(`${tabId}-panel`).classList.add('active');
+        if (tabId === 'score' && this.scoreRenderer) this.scoreRenderer.onTabShown();
+        if (tabId === 'saved') this.loadSavedList();
       }
-      html += '<div class="cycle-box"><div style="font-size:.75rem;color:var(--muted);margin-bottom:4px">Cycle ' + cycle + "</div>" + inner + "</div>";
-      cycle++;
+      setStatus(msg, type = 'info') {
+        const el = document.getElementById('status');
+        el.textContent = msg; el.className = type;
+      }
+      onFileSelected() { if (document.getElementById('audio-file').files[0]) document.getElementById('audio-url').value = ''; }
+      onUrlInput() { if (document.getElementById('audio-url').value.trim()) document.getElementById('audio-file').value = ''; }
+      async analyze() {
+        const fileInput = document.getElementById('audio-file');
+        const urlInput = document.getElementById('audio-url');
+        const formData = new FormData();
+        const hasFile = fileInput.files.length > 0;
+        const hasUrl = urlInput.value.trim().length > 0;
+        if (!hasFile && !hasUrl) { this.setStatus('Please upload a file OR enter a URL.', 'error'); return; }
+        this.setStatus('Analyzing...', 'info');
+        try {
+          let response;
+          if (hasFile) { formData.append('audio', fileInput.files[0]); response = await fetch('/api/recognize', { method: 'POST', body: formData }); }
+          else { formData.append('url', urlInput.value.trim()); response = await fetch('/api/recognize', { method: 'POST', body: formData }); }
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          this.setStatus('Analysis complete!', 'success');
+          window.dispatchEvent(new CustomEvent('analysisComplete', { detail: data }));
+        } catch (err) { this.setStatus(err.message, 'error'); }
+      }
+      toggleRecord() { document.getElementById('record-panel').classList.remove('hidden'); document.getElementById('record-btn').disabled = true; this.recorder.start(); }
+      stopRecording() { this.recorder.stop(); document.getElementById('record-panel').classList.add('hidden'); document.getElementById('record-btn').disabled = false; }
+      renderResults(data) {
+        const panel = document.getElementById('results-panel');
+        const raga = data.raga || 'Unknown', parent = data.parentRaga || data.parent || '', tala = data.tala || 'Unknown', composer = data.composer || 'Unknown';
+        const aroha = data.aroha || '', avaroha = data.avaroha || '';
+        panel.innerHTML = `
+          <div class="result-grid">
+            <div class="result-card"><h4>Raga</h4><p>${raga}</p></div>
+            <div class="result-card"><h4>Parent Melakarta</h4><p>${parent || '—'}</p></div>
+            <div class="result-card"><h4>Tala</h4><p>${tala}</p></div>
+            <div class="result-card"><h4>Composer</h4><p>${composer}</p></div>
+            <div class="result-card"><h4>Duration</h4><p>${data.duration ? data.duration.toFixed(1) + 's' : '—'}</p></div>
+            <div class="result-card"><h4>Source</h4><p>${data.source || '—'}</p></div>
+          </div>
+          ${aroha ? `<div class="result-card" style="margin-bottom:1rem;"><h4>Arohana</h4><p style="font-family:monospace">${aroha}</p></div>` : ''}
+          ${avaroha ? `<div class="result-card" style="margin-bottom:1rem;"><h4>Avarohana</h4><p style="font-family:monospace">${avaroha}</p></div>` : ''}`;
+      }
+      renderSwaras(data) {
+        const panel = document.getElementById('swaras-panel');
+        const segments = data.segments || [];
+        if (segments.length === 0) { panel.innerHTML = '<p style="color: var(--text-muted);">No swara segments detected.</p>'; return; }
+        panel.innerHTML = '<div class="swara-grid">' + segments.map(s => `
+          <div class="swara-card">
+            <h3><span>${s.name.toUpperCase()}</span> <span class="badge badge-raga">${(s.endTime - s.startTime).toFixed(1)}s</span></h3>
+            <div class="swara-line">${s.swaras || '—'}</div>
+            ${s.quantized && s.quantized.length > 0 ? `<div style="margin-top:0.5rem; font-size:0.8rem; color:#666;">Detected: ${s.quantized.slice(0, 8).map(q => q.note).join(' ')}${s.quantized.length > 8 ? '...' : ''}</div>` : ''}
+            ${s.sahityam ? `<div class="sahityam-text">${s.sahityam}</div>` : ''}
+          </div>`).join('') + '</div>';
+      }
+      renderLyrics(data) {
+        const panel = document.getElementById('lyrics-panel');
+        const s = data.sahityam || {};
+        if (!s.pallavi && !s.anupallavi) { panel.innerHTML = '<p style="color: var(--text-muted);">No sahityam available.</p>'; return; }
+        const sections = [['Pallavi', s.pallavi], ['Anupallavi', s.anupallavi], ['Charanam 1', s.charanam1], ['Charanam 2', s.charanam2], ['Charanam 3', s.charanam3], ['Chittaswaram', s.chittaswaram], ['Mano / Kalpanaswaram', s.manodharma]];
+        panel.innerHTML = sections.filter(([_, text]) => text).map(([name, text]) => `
+          <div class="swara-card" style="margin-bottom:1rem; background:#f0f9ff; border-color:#bae6fd;">
+            <h3 style="color:#0369a1;">${name}</h3>
+            <p style="font-size:1.05rem; line-height:1.8;">${text}</p>
+          </div>`).join('');
+      }
+      async loadScore(xmlContent, audioUrl) {
+        if (!xmlContent) return;
+        document.getElementById('score-container').innerHTML = '';
+        this.scoreRenderer = new ScoreRenderer('score-container');
+        await this.scoreRenderer.init(xmlContent);
+        if (audioUrl) document.getElementById('audio-player').src = audioUrl;
+      }
+      playScore() { const audio = document.getElementById('audio-player'); if (!audio.src || !this.scoreRenderer) return; this.scoreRenderer.playWithAudio(audio.src); }
+      async loadRagaChart() {
+        try { const res = await fetch('/api/ragas'); this.ragas = await res.json(); this.populateRagaDatalist(); this.renderRagaChart(this.ragas); }
+        catch (e) { console.error('Failed to load raga chart', e); }
+      }
+      populateRagaDatalist() { document.getElementById('raga-datalist').innerHTML = this.ragas.map(r => `<option value="${r.name}">${r.name} (${r.parent || 'Melakarta ' + r.melakarta})</option>`).join(''); }
+      renderRagaChart(ragas) { document.getElementById('raga-chart-body').innerHTML = ragas.map(r => `
+        <tr><td>${r.melakarta || '—'}</td><td class="melakarta">${r.name}</td>
+        <td style="font-family:monospace; font-size:0.8rem;">${r.arohana?.join(' ') || '—'}</td>
+        <td style="font-family:monospace; font-size:0.8rem;">${r.avarohana?.join(' ') || '—'}</td>
+        <td class="janya">${r.janyas?.join(', ') || '—'}</td></tr>`).join(''); }
+      filterRagaChart() { const q = document.getElementById('raga-search').value.toLowerCase(); this.renderRagaChart(this.ragas.filter(r => r.name.toLowerCase().includes(q) || (r.janyas && r.janyas.some(j => j.toLowerCase().includes(q))))); }
+      onRagaInput() {
+        const raga = this.ragas.find(r => r.name.toLowerCase() === document.getElementById('compose-raga').value.toLowerCase());
+        if (raga) { document.getElementById('compose-parent').value = raga.parent || `Melakarta ${raga.melakarta}`; document.getElementById('compose-arohana').value = raga.arohana?.join(' ') || ''; document.getElementById('compose-avarohana').value = raga.avarohana?.join(' ') || ''; }
+      }
+      async saveComposition() {
+        const payload = { id: `compose_${Date.now()}`, title: document.getElementById('compose-title').value, composer: document.getElementById('compose-composer').value, raga: document.getElementById('compose-raga').value, parent: document.getElementById('compose-parent').value, tala: document.getElementById('compose-tala').value, instrument: document.getElementById('compose-instrument').value, arohana: document.getElementById('compose-arohana').value, avarohana: document.getElementById('compose-avarohana').value, sahityam: { pallavi: document.getElementById('compose-pallavi').value, anupallavi: document.getElementById('compose-anupallavi').value, charanam1: document.getElementById('compose-charanam').value }, source: 'user_compose' };
+        try { const res = await fetch('/api/compositions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (res.ok) { document.getElementById('compose-status').textContent = '✅ Saved!'; await fetch('/api/compositions/reload', { method: 'POST' }); } else throw new Error('Save failed'); }
+        catch (e) { document.getElementById('compose-status').textContent = '❌ ' + e.message; }
+      }
+      aiSuggest() {
+        const raga = this.ragas.find(r => r.name.toLowerCase() === document.getElementById('compose-raga').value.toLowerCase());
+        if (!raga) { alert('Select a raga first.'); return; }
+        document.getElementById('compose-pallavi').value = `[Suggested Pallavi in ${raga.name}]\nArohana: ${raga.arohana?.join(' ') || ''}\nAvarohana: ${raga.avarohana?.join(' ') || ''}\n\nStart with: S , - S R2 G2 | M1 G2 R2 S | N2 , - D2 P | ...`;
+        document.getElementById('compose-status').textContent = '✨ Suggested swara skeleton pasted';
+      }
+      async loadSavedList() {
+        const container = document.getElementById('saved-list-container');
+        try { const res = await fetch('/api/saved'); const items = await res.json(); if (items.length === 0) { container.innerHTML = '<p style="color: var(--text-muted);">No saved analyses yet.</p>'; return; }
+          container.innerHTML = '<div class="saved-list">' + items.map(item => `
+            <div class="saved-card">
+              <h4>${item.title || 'Untitled'}</h4>
+              <div style="display:flex; gap:0.5rem; margin:0.25rem 0;"><span class="badge badge-raga">${item.raga || '?'}</span><span class="badge badge-tala">${item.tala || '?'}</span></div>
+              <small>${item.composer || 'Unknown'} • ${new Date(item.created_at).toLocaleDateString()}</small>
+              ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
+              <div style="margin-top:0.5rem;"><button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button></div>
+            </div>`).join('') + '</div>';
+        } catch (e) { container.innerHTML = '<p style="color: var(--text-muted);">Could not load saved items.</p>'; }
+      }
+      loadSavedItem(item) { window.dispatchEvent(new CustomEvent('analysisComplete', { detail: item })); this.switchTab('results'); }
     }
-    html += "</div>";
-  });
-  document.getElementById("notationContainer").innerHTML = html || '<p style="color:var(--muted);text-align:center;padding:20px">No notation data.</p>';
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PROCESSING TAB
-// ═══════════════════════════════════════════════════════════════════════
-function displayProcessing(data) {
-  const p = data.processing || {};
-  const rows = [
-    ["Pitch Detection", p.pitchAlgorithm || "YIN"],
-    ["Beat Detection", p.beatAlgorithm || "Comb filter"],
-    ["Tala Detection", p.talaAlgorithm || "DP template"],
-    ["Scale Detection", p.scaleAlgorithm || "Bayesian chroma"],
-    ["Raga Detection", p.ragaAlgorithm || "Multi-modal"],
-    ["Instrument Detection", p.instrumentAlgorithm || "Spectral classification"]
-  ];
-  let html = '<table><thead><tr><th>Module</th><th>Algorithm</th></tr></thead><tbody>';
-  rows.forEach(r => { html += '<tr><td>' + escapeHtml(r[0]) + "</td><td>" + escapeHtml(r[1]) + "</td></tr>"; });
-  html += "</tbody></table>";
-  html += '<div style="margin-top:14px;color:var(--muted);font-size:.85rem">Version: ' + (data.version || "4.0.2") + " | Elapsed: " + (data.elapsedMs || 0) + "ms | DB Saved: " + (data.dbSaved ? "Yes" : "No") + "</div>";
-  document.getElementById("processingContainer").innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// SCORE TAB
-// ═══════════════════════════════════════════════════════════════════════
-function displayScore(data) {
-  const container = document.getElementById("osmdContainer");
-  const downloadXml = document.getElementById("musescoreDownload");
-  const downloadMidi = document.getElementById("midiDownload");
-  const playBtn = document.getElementById("playScoreBtn");
-  const status = document.getElementById("scoreStatus");
-
-  if (!data.sheetMusicXml) {
-    container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:60px">No sheet music available.</p>';
-    downloadXml.style.display = "none"; downloadMidi.style.display = "none"; playBtn.style.display = "none";
-    return;
-  }
-  downloadXml.style.display = "inline-block"; downloadMidi.style.display = "inline-block"; playBtn.style.display = "inline-block";
-
-  if (data.id) {
-    downloadXml.href = API_BASE + "/api/recognize/musicxml/" + data.id;
-    downloadMidi.href = API_BASE + "/api/recognize/midi/" + data.id;
-    downloadXml.download = (data.title || data.raga || "score") + ".musicxml";
-    downloadMidi.download = (data.title || data.raga || "score") + ".mid";
-    scoreAudio.src = API_BASE + "/api/recognize/audio/" + data.id;
-    scoreAudio.style.display = "block";
-    status.textContent = "Audio loaded. Press Play Score to start.";
-  } else {
-    scoreAudio.style.display = "none";
-    status.textContent = "Audio playback requires saved session.";
-  }
-
-  container.innerHTML = '<div id="osmd-score" style="width:100%;min-height:500px"></div>';
-  if (typeof opensheetmusicdisplay === "undefined") {
-    var script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.5/build/opensheetmusicdisplay.min.js";
-    script.onload = function() { renderOSMD(data.sheetMusicXml); };
-    script.onerror = function() {
-      container.innerHTML = '<p style="color:#f44336;padding:20px">Failed to load OSMD. Check internet connection.</p>';
-    };
-    document.head.appendChild(script);
-  } else {
-    renderOSMD(data.sheetMusicXml);
-  }
-}
-
-function renderOSMD(xmlString) {
-  try {
-    osmdInstance = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-score", {
-      autoResize: true, drawingParameters: "compacttight",
-      drawTitle: true, drawSubtitle: true, drawComposer: true, drawCredits: true,
-      drawPartNames: true, drawMeasureNumbers: true, drawTimeSignatures: true,
-      colorStemsLikeNoteheads: true, defaultColorNotehead: "#333", defaultColorStem: "#333"
-    });
-    osmdInstance.load(xmlString).then(function() {
-      osmdInstance.render();
-      osmdInstance.cursor.show();
-    }).catch(function(e) {
-      document.getElementById("osmd-score").innerHTML = '<p style="color:#f44336;padding:20px">Error rendering score: ' + escapeHtml(e.message) + "</p>";
-    });
-  } catch (e) {
-    document.getElementById("osmd-score").innerHTML = '<p style="color:#f44336;padding:20px">OSMD Error: ' + escapeHtml(e.message) + "</p>";
-  }
-}
-
-function toggleScorePlayback() {
-  if (!osmdInstance || !scoreAudio.src) return;
-  const btn = document.getElementById("playScoreBtn");
-  if (isPlaying) {
-    scoreAudio.pause(); isPlaying = false; btn.textContent = "▶ Play Score";
-    if (playbackInterval) clearInterval(playbackInterval);
-  } else {
-    scoreAudio.play(); isPlaying = true; btn.textContent = "⏸ Pause"; startCursorFollow();
-  }
-}
-
-function startCursorFollow() {
-  if (playbackInterval) clearInterval(playbackInterval);
-  const bpm = currentResult?.bpm || 120;
-  const bpC = currentResult?.beatsPerCycle || 8;
-  const secPerMeasure = (60 / bpm) * bpC;
-  playbackInterval = setInterval(function() {
-    if (!isPlaying || !osmdInstance || !osmdInstance.cursor) return;
-    const t = scoreAudio.currentTime;
-    const measureIdx = Math.floor(t / secPerMeasure);
-    const totalMeasures = osmdInstance.graphic?.measureList?.length || 0;
-    if (measureIdx >= 0 && measureIdx < totalMeasures) {
-      try { osmdInstance.cursor.reset(); for (let i = 0; i < measureIdx; i++) osmdInstance.cursor.next(); } catch (e) { }
+    class LiveRecorder {
+      constructor() { this.mediaRecorder = null; this.chunks = []; this.stream = null; this.timerInterval = null; }
+      async start() {
+        try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 44100, channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+          this.mediaRecorder = new MediaRecorder(this.stream, { mimeType }); this.chunks = [];
+          this.mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) this.chunks.push(e.data); };
+          this.mediaRecorder.onstop = () => { const blob = new Blob(this.chunks, { type: mimeType }); this.uploadRecording(blob); };
+          this.mediaRecorder.start(100); this.startTimer();
+        } catch (err) { console.error('Recording failed:', err); alert('Microphone access denied.'); }
+      }
+      stop() { if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') { this.mediaRecorder.stop(); this.stream.getTracks().forEach(t => t.stop()); clearInterval(this.timerInterval); } }
+      startTimer() { let seconds = 0; const timerEl = document.getElementById('record-timer'); this.timerInterval = setInterval(() => { seconds++; const mins = Math.floor(seconds / 60).toString().padStart(2, '0'); const secs = (seconds % 60).toString().padStart(2, '0'); if (timerEl) timerEl.textContent = `${mins}:${secs}`; }, 1000); }
+      async uploadRecording(blob) { const formData = new FormData(); formData.append('audio', blob, 'live_recording.webm'); app.setStatus('Analyzing live recording...', 'info'); try { const res = await fetch('/api/recognize', { method: 'POST', body: formData }); const data = await res.json(); if (data.error) throw new Error(data.error); app.setStatus('Live recording analysis complete!', 'success'); window.dispatchEvent(new CustomEvent('analysisComplete', { detail: data })); } catch (err) { app.setStatus(err.message, 'error'); } }
     }
-    if (scoreAudio.ended) {
-      isPlaying = false;
-      document.getElementById("playScoreBtn").textContent = "▶ Play Score";
-      clearInterval(playbackInterval);
-      try { osmdInstance.cursor.reset(); } catch(e){}
+    class ScoreRenderer {
+      constructor(containerId) { this.container = document.getElementById(containerId); this.osmd = null; this.audio = null; this.isPlaying = false; this.rafId = null; this.currentCursorIndex = -1; this.timingMap = []; }
+      async init(xmlContent) { await this.ensureVisible(); this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(this.container, { autoResize: true, backend: 'svg', drawTitle: true, drawComposer: true, drawLyrics: true, drawingParameters: 'default', pageFormat: 'Endless' }); await this.osmd.load(xmlContent); await this.osmd.render(); this.osmd.cursor.show(); this.osmd.cursor.hide(); this.buildTimingMap(); }
+      ensureVisible() { return new Promise((resolve) => { if (this.container.offsetParent === null) { const iv = setInterval(() => { if (this.container.offsetParent !== null) { clearInterval(iv); resolve(); } }, 100); } else resolve(); }); }
+      buildTimingMap() { this.timingMap = []; const bpm = this.osmd.Sheet.DefaultStartTempoInBpm || 60; const spq = 60 / bpm; let ct = 0; this.osmd.cursor.reset(); while (!this.osmd.cursor.iterator.EndReached) { const notes = this.osmd.cursor.NotesUnderCursor(); if (notes.length > 0) { const dur = notes[0].Length.RealValue * 4 * spq; this.timingMap.push({ time: ct, duration: dur }); ct += dur; } this.osmd.cursor.next(); } this.osmd.cursor.reset(); }
+      playWithAudio(audioUrl) { if (this.audio) { this.audio.pause(); this.audio = null; } this.audio = new Audio(audioUrl); this.osmd.cursor.reset(); this.osmd.cursor.show(); this.isPlaying = true; this.currentCursorIndex = -1; this.audio.play(); this.syncLoop(); this.audio.onended = () => { this.isPlaying = false; cancelAnimationFrame(this.rafId); this.osmd.cursor.hide(); }; }
+      syncLoop() { if (!this.isPlaying || !this.audio) return; const ct = this.audio.currentTime; let ti = 0; for (let i = 0; i < this.timingMap.length; i++) { if (this.timingMap[i].time <= ct) ti = i; else break; } if (ti !== this.currentCursorIndex) { this.osmd.cursor.reset(); for (let i = 0; i < ti; i++) this.osmd.cursor.next(); this.currentCursorIndex = ti; this.scrollToCursor(); } this.rafId = requestAnimationFrame(() => this.syncLoop()); }
+      scrollToCursor() { const el = this.container.querySelector('.cursor'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      async onTabShown() { if (this.osmd && this.container.offsetParent !== null) { await this.osmd.render(); if (this.isPlaying) this.osmd.cursor.show(); } }
     }
-  }, 200);
-}
-
-async function loadSavedAnalyses() {
-  var container = document.getElementById("savedContainer");
-  container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:20px">Loading...</p>';
-  try {
-    var res = await fetch(API_BASE + "/api/analyses");
-    if (!res.ok) throw new Error("Failed to load");
-    var rows = await res.json();
-    if (!rows.length) { container.innerHTML = '<p style="color:#8888aa;text-align:center;padding:30px">No saved analyses yet.</p>'; return; }
-    container.innerHTML = rows.map(function(r) {
-      var audioHtml = '<audio controls preload="none" style="width:100%;margin-top:10px;height:32px;border-radius:16px">' +
-        '<source src="' + API_BASE + "/api/recognize/audio/" + r.id + '" type="audio/mpeg">' +
-        "Your browser does not support the audio element.</audio>";
-      return '<div class="session-card" onclick="loadAnalysis(\'' + r.id + '\')">' +
-        '<h4>' + escapeHtml(r.title || "Untitled") + "</h4>" +
-        '<div class="meta">' + escapeHtml(r.raga || "Unknown") + " &bull; " + escapeHtml(r.tala || "—") + " &bull; " + new Date(r.createdAt * 1000).toLocaleString() + "</div>" +
-        '<span class="badge badge-high">ID: ' + r.id.slice(0, 8) + "</span>" + audioHtml + "</div>";
-    }).join("");
-  } catch (e) {
-    container.innerHTML = '<div class="error">' + escapeHtml(e.message) + "</div>";
-  }
-}
-
-async function loadAnalysis(id) {
-  try {
-    const res = await fetch(API_BASE + "/api/analyses/" + id);
-    if (!res.ok) throw new Error("Not found");
-    const data = await res.json();
-    if (data.lyrics) {
-      try { data.sahityam = JSON.parse(data.lyrics).sahityam || {}; } catch(e){}
-      try { data.transcription = JSON.parse(data.lyrics).transcription || ""; } catch(e){}
-    }
-    handleResult(data);
-  } catch (e) {
-    alert("Failed to load analysis: " + e.message);
-  }
-}
-</script>
+    const app = new App();
+  </script>
 </body>
 </html>

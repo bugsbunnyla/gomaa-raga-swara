@@ -1,7 +1,10 @@
 function generateSegmentSwaras(audioDuration, composition, raga, pitchData) {
   const segments = [];
-  const structure = composition.structure;
-
+  const structure = composition.structure || {
+    aalapana: 0.15, pallavi: 0.15, anupallavi: 0.15,
+    charanam1: 0.15, charanam2: 0.15, charanam3: 0.15,
+    chittaswaram: 0.05, manodharma: 0.05
+  };
   let cumulative = 0;
   const boundaries = {};
   const totalRatio = Object.values(structure).reduce((a, b) => a + b, 0);
@@ -13,15 +16,15 @@ function generateSegmentSwaras(audioDuration, composition, raga, pitchData) {
   }
 
   for (const [section, bounds] of Object.entries(boundaries)) {
-    const hint = composition.swara_hints?.[section] 
-              || composition.swara_hints?.['default'] 
-              || raga.arohana.join(' ');
+    const hint = composition.swara_hints?.[section]
+              || composition.swara_hints?.['default']
+              || raga.arohana?.join(' ')
+              || '';
 
     const sliceStart = Math.floor((bounds.start / audioDuration) * pitchData.length);
     const sliceEnd = Math.floor((bounds.end / audioDuration) * pitchData.length);
     const slicePitches = pitchData.slice(sliceStart, sliceEnd).filter(p => p > 0);
-
-    const quantized = quantizeToRaga(slicePitches, raga.frequency_map);
+    const quantized = quantizeToRaga(slicePitches, raga.frequency_map || {});
 
     segments.push({
       name: section,
@@ -37,6 +40,9 @@ function generateSegmentSwaras(audioDuration, composition, raga, pitchData) {
 }
 
 function quantizeToRaga(pitches, freqMap) {
+  if (!freqMap || Object.keys(freqMap).length === 0) {
+    return pitches.map(p => ({ note: '?', freq: p, detected: p }));
+  }
   const notes = Object.entries(freqMap);
   return pitches.map(p => {
     let closest = notes[0];

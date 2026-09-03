@@ -1,66 +1,25 @@
-{
-  "compositions": [
-    {
-      "name": "Mahaganapatim",
-      "raga": "nATA",
-      "tala": "Adi",
-      "composer": "Muttuswaamee Dikshitar",
-      "melakartaNum": 36,
-      "aroha": "S R3 G3 M1 P D3 N3 S",
-      "avaroha": "S N3 D3 P M1 G3 R3 S",
-      "sahityam": {
-        "aalapana": "",
-        "pallavi": "Mahaganapatim manasa smarami",
-        "anupallavi": "Vasishtha vamadevaadi vandita",
-        "charanam": "Mooshika vaahana mudaakaraaatam"
-      },
-      "aliases": [
-        "mahaganapatim",
-        "nata"
-      ]
+[
+  {
+    "name": "Mamava_Sada",
+    "raga": "kaanaDaa",
+    "tala": "Rupaka",
+    "composer": "Swaati Tirunaal",
+    "melakartaNum": 22,
+    "parent": "kharaharapriya",
+    "janya": true,
+    "aroha": "S R2 G2 M1 D N2 S",
+    "avaroha": "S N2 P M1 G2 M1 R2 S",
+    "sahityam": {
+      "pallavi": "māmava sadā janani mahiṣāsura sūtani (amba)",
+      "anupallavi": "sōma bimba manōhara sumukhī sevakākhila kāma dāna nirata kaṭākṣa vilāsinī (amba)",
+      "charanam1": "pura vimata vadana paṅkeruha madhupē narada mukha maunī nikara gēya caritē sarasīruhasanādi sura samudaya maṇi caru mauli virajita caraṇāmbuja yugalē",
+      "charanam2": "kanaka bhāsura divya kalāpa rajita gātrī vanaruhadalatērapa vibhanjana ruci nētrī munigaṇa sammōhana mananīya mrduhāsē vinata jana kalpakavallarī giri sutē",
+      "charanam3": "kurumē kuśalam sadā kamalanābhanujē niravadhi bhava khēda nivāraṇa niratē carunutana ghana sadr̥śarajita vēṇī daruṇa dānujāli dharāṇā pāṭucaritē"
     },
-    {
-      "name": "Rama_Namamu",
-      "raga": "kalyani",
-      "tala": "Adi",
-      "composer": "Thyagaraja",
-      "melakartaNum": 65,
-      "aroha": "S R2 G3 M2 P D2 N3 S",
-      "avaroha": "S N3 D2 P M2 G3 R2 S",
-      "sahityam": {
-        "pallavi": "Rama namamu",
-        "anupallavi": "Rama namamu",
-        "charanam": "Rama namamu"
-      },
-      "aliases": [
-        "rama namamu"
-      ]
-    },
-    {
-      "name": "Mamava_sada",
-      "raga": "kaanaDaa",
-      "tala": "Rupaka",
-      "composer": "Swaati Tirunaal",
-      "melakartaNum": 22,
-      "parent": "kharaharapriya",
-      "janya": true,
-      "aroha": "S R2 G2 M1 D N2 S",
-      "avaroha": "S N2 P M1 G2 M1 R2 S",
-      "sahityam": {
-        "aalapana": "",
-        "pallavi": "mAmava sadA janani mahiSAsura sUdani (amba)",
-        "anupallavi": "sOma bimba manOhara sumukhi sEvakAkhila kAma dAna nirata kaTAkSa vilAsini (amba)",
-        "charanam1": "pura vimata vadana pankEruha madhupE nArada mukha maunI nikara gEya caritE SarasIruhAsanAdi sura samudaya maNi cAru mauLi virAjita caraNAmbuja yugaLE",
-        "charanam2": "kanaka bhAsura divya kalApa rAjita gAtri vanaruha daLa darpa vibhanjana ruci nEtri munigaNa sammOhana mAnanIya mrduhAsE vinata jana kalpakavallari giri sutE",
-        "charanam3": "kuru mE kushalam sadA kamalanAbhAnujE niravadhi bhava khEda nivAraNa niratE cArunUtana ghana sadrusha rAjita vENi dAruNa danujALi dAraNa paTucaritE"
-      },
-      "aliases": [
-        "mamava",
-        "mamavasada",
-        "maamava",
-        "janani",
-        "mahishasura"
-      ]
-    }
-  ]
-}
+    "aliases": [
+      "mamava",
+      "mamava_sada",
+      "mamava_sada_janani"
+    ]
+  }
+]

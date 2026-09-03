@@ -1,96 +1,91 @@
-{
-  "ragas": [
-    {
-      "name": "nATA",
-      "parent": "nATA",
-      "melakartaNum": 36,
-      "aroha": "S R3 G3 M1 P D3 N3 S",
-      "avaroha": "S N3 D3 P M1 G3 R3 S",
-      "timeOfDay": "Morning",
-      "mood": "Heroic, energetic",
-      "aliases": [
-        "Nata",
-        "Natta"
-      ]
+[
+  {
+    "name": "kharaharapriya",
+    "melakarta": 22,
+    "arohana": [
+      "S",
+      "R2",
+      "G2",
+      "M1",
+      "P",
+      "D2",
+      "N2",
+      "S"
+    ],
+    "avarohana": [
+      "S",
+      "N2",
+      "D2",
+      "P",
+      "M1",
+      "G2",
+      "R2",
+      "S"
+    ],
+    "frequency_map": {
+      "S": 261.63,
+      "R1": 277.18,
+      "R2": 293.66,
+      "R3": 311.13,
+      "G1": 311.13,
+      "G2": 329.63,
+      "G3": 349.23,
+      "M1": 349.23,
+      "M2": 369.99,
+      "P": 392.0,
+      "D1": 415.3,
+      "D2": 440.0,
+      "D3": 466.16,
+      "N1": 466.16,
+      "N2": 493.88,
+      "N3": 523.25
     },
-    {
-      "name": "kalyani",
-      "parent": "kalyani",
-      "melakartaNum": 65,
-      "aroha": "S R2 G3 M2 P D2 N3 S",
-      "avaroha": "S N3 D2 P M2 G3 R2 S",
-      "timeOfDay": "Evening",
-      "mood": "Devotional, majestic",
-      "aliases": [
-        "Kalyani",
-        "Yaman"
-      ]
+    "western_equiv": "C Dorian (C D E♭ F G A B♭)",
+    "character": "Melakarta 22. Soothing, serious, contemplative."
+  },
+  {
+    "name": "kaanaDaa",
+    "parent": "kharaharapriya",
+    "melakarta": 22,
+    "arohana": [
+      "S",
+      "R2",
+      "G2",
+      "M1",
+      "D",
+      "N2",
+      "S"
+    ],
+    "avarohana": [
+      "S",
+      "N2",
+      "P",
+      "M1",
+      "G2",
+      "M1",
+      "R2",
+      "S"
+    ],
+    "frequency_map": {
+      "S": 261.63,
+      "R1": 277.18,
+      "R2": 293.66,
+      "R3": 311.13,
+      "G1": 311.13,
+      "G2": 329.63,
+      "G3": 349.23,
+      "M1": 349.23,
+      "M2": 369.99,
+      "P": 392.0,
+      "D1": 415.3,
+      "D": 440.0,
+      "D2": 440.0,
+      "D3": 466.16,
+      "N1": 466.16,
+      "N2": 466.16,
+      "N3": 493.88
     },
-    {
-      "name": "sankarabharanam",
-      "parent": "sankarabharanam",
-      "melakartaNum": 29,
-      "aroha": "S R2 G3 M1 P D2 N3 S",
-      "avaroha": "S N3 D2 P M1 G3 R2 S",
-      "timeOfDay": "Any",
-      "mood": "Peaceful, auspicious",
-      "aliases": [
-        "Shankarabharanam",
-        "Bilaval"
-      ]
-    },
-    {
-      "name": "mohanam",
-      "parent": "sankarabharanam",
-      "melakartaNum": 29,
-      "janya": true,
-      "aroha": "S R2 G3 P D2 S",
-      "avaroha": "S D2 P G3 R2 S",
-      "timeOfDay": "Morning",
-      "mood": "Joyful, playful",
-      "aliases": [
-        "Mohanam",
-        "Bhoopali"
-      ]
-    },
-    {
-      "name": "todi",
-      "parent": "todi",
-      "melakartaNum": 8,
-      "aroha": "S R1 G2 M1 P D1 N2 S",
-      "avaroha": "S N2 D1 P M1 G2 R1 S",
-      "timeOfDay": "Morning",
-      "mood": "Serious, contemplative",
-      "aliases": [
-        "Todi"
-      ]
-    },
-    {
-      "name": "kharaharapriya",
-      "parent": "kharaharapriya",
-      "melakartaNum": 22,
-      "aroha": "S R2 G2 M1 P D2 N2 S",
-      "avaroha": "S N2 D2 P M1 G2 R2 S",
-      "timeOfDay": "Any",
-      "mood": "Compassionate, soothing",
-      "aliases": [
-        "Kharaharapriya",
-        "Kafi"
-      ]
-    },
-    {
-      "name": "kaanaDaa",
-      "parent": "kharaharapriya",
-      "melakartaNum": 22,
-      "janya": true,
-      "aroha": "S R2 G2 M1 D N2 S",
-      "avaroha": "S N2 P M1 G2 M1 R2 S",
-      "timeOfDay": "Night",
-      "mood": "Devotional, majestic",
-      "aliases": [
-        "Kanada",
-        "Kannada"
-      ]
-    }
-  ]
-}
+    "western_equiv": "C, D, E♭, F, G, A, B♭ (Kharaharapriya janya; arohana omits P)",
+    "character": "Bhava-heavy, gambhira. D-N2-S phrase is signature."
+  }
+]
