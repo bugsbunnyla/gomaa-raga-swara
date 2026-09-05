@@ -304,15 +304,24 @@
       async analyze() {
         const fileInput = document.getElementById('audio-file');
         const urlInput = document.getElementById('audio-url');
-        const formData = new FormData();
         const hasFile = fileInput.files.length > 0;
         const hasUrl = urlInput.value.trim().length > 0;
         if (!hasFile && !hasUrl) { this.setStatus('Please upload a file OR enter a URL.', 'error'); return; }
         this.setStatus('Analyzing...', 'info');
         try {
           let response;
-          if (hasFile) { formData.append('audio', fileInput.files[0]); response = await fetch('/api/recognize', { method: 'POST', body: formData }); }
-          else { formData.append('url', urlInput.value.trim()); response = await fetch('/api/recognize', { method: 'POST', body: formData }); }
+          if (hasFile) {
+            const formData = new FormData();
+            formData.append('audio', fileInput.files[0]);
+            response = await fetch('/api/recognize', { method: 'POST', body: formData });
+          } else {
+            /* ── Send URL as JSON so express.json() can parse it ── */
+            response = await fetch('/api/recognize', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: urlInput.value.trim() })
+            });
+          }
           const data = await response.json();
           if (data.error) throw new Error(data.error);
           this.setStatus('Analysis complete!', 'success');

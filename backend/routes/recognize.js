@@ -165,14 +165,14 @@ router.post('/', async (req, res) => {
     // ------------------------------------------------------------------
     try {
       const dbPath = path.join(__dirname, '..', '..', 'models', 'music.db');
-      const sqliteModule = require('../core/db/sqlite');
+      const sqliteModule = require('../../core/db/sqlite');   // ← was '../core/db/sqlite' (wrong)
       const db = typeof sqliteModule === 'function' ? sqliteModule(dbPath) : sqliteModule;
       const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const insert = db.prepare(`
         INSERT INTO music (id, filename, originalName, compositionId, title, raga, tala, composer, duration, sahityam)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      insert.run(
+      await insert.run(
         id,
         filename,
         filename,
@@ -189,7 +189,6 @@ router.post('/', async (req, res) => {
     } catch (dbErr) {
       console.log('[GoMaa] DB save failed (non-fatal):', dbErr.message);
     }
-
     res.json(analysisResult);
   } catch (err) {
     console.error('[GoMaa] Recognize error:', err);

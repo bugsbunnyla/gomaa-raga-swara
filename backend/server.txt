@@ -37,7 +37,7 @@ app.get('/api/saved', async (req, res) => {
     const dbPath = path.join(__dirname, '..', 'models', 'music.db');
     const sqliteModule = require('../core/db/sqlite');
     const db = typeof sqliteModule === 'function' ? sqliteModule(dbPath) : sqliteModule;
-    const rows = await db.prepare('SELECT * FROM music ORDER BY created_at DESC LIMIT 100').all();
+    const rows = db.prepare('SELECT * FROM music ORDER BY created_at DESC LIMIT 100').all();
     if (typeof db.close === 'function') db.close();
     res.json(rows.map(r => ({
       ...r,

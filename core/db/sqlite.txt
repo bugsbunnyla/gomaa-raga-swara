@@ -60,23 +60,4 @@ function close() {
   });
 }
 
-/* ── DEFENSIVE FALLBACK: .prepare() for better-sqlite3-style callers ── */
-function prepare(sql) {
-  return {
-    run: (...params) => run(sql, params.flat()),
-    get: (...params) => get(sql, params.flat()),
-    all: (...params) => all(sql, params.flat()),
-  };
-}
-
-const api = { getDB, run, get, all, close, prepare };
-
-/* Allow: const db = require('./sqlite')(dbPath)  — same pattern as better-sqlite3 */
-function createDB(overriddenPath) {
-  if (overriddenPath && overriddenPath !== DB_PATH) {
-    console.warn("[sqlite] Path override ignored; using", DB_PATH);
-  }
-  return api;
-}
-Object.assign(createDB, api);
-module.exports = createDB;
+module.exports = { getDB, run, get, all, close };
