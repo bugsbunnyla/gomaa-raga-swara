@@ -2,26 +2,50 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const https = require('https');
 const { generateSegmentSwaras } = require('../swaragen');
 
 // Try to load ytdl-core for YouTube detection (optional — graceful fallback)
-let ytdl;
-try { ytdl = require('ytdl-core'); } catch (e) { ytdl = null; }
+let ytdl = null;
+try {
+  ytdl = require('ytdl-core');
+} catch (e) {
+  console.warn('[recognize] ytdl-core not installed. YouTube detection disabled.');
+}
 
 // Live recording normalization via ffmpeg
-let ffmpeg, ffmpegStatic;
+let ffmpeg = null;
+let ffmpegStatic = null;
+
 try {
   ffmpeg = require('fluent-ffmpeg');
   ffmpegStatic = require('ffmpeg-static');
+
+  if (ffmpegStatic) {
+    ffmpeg.setFfmpegPath(ffmpegStatic);
+  }
 } catch (e) {
-  console.warn('[recognize] fluent-ffmpeg not installed. Live recording normalization disabled.');
+  console.warn(
+    '[recognize] fluent-ffmpeg/ffmpeg-static not installed. ' +
+    'Live recording normalization disabled.'
+  );
 }
 
+/**
+ * Normalize an audio recording to:
+ * - WAV
+ * - 16 kHz
+ * - mono
+ * - signed 16-bit PCM
+ */
 async function normalizeLiveRecording(inputPath, outputPath) {
+  if (!ffmpeg || !ffmpegStatic) {
+    throw new Error('FFmpeg is not available');
+  }
+
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .setFfmpegPath(ffmpegStatic)
       .audioFrequency(16000)
       .audioChannels(1)
       .audioCodec('pcm_s16le')
@@ -34,7 +58,7 @@ async function normalizeLiveRecording(inputPath, outputPath) {
 
 // Helper: detect YouTube URL
 function isYouTubeUrl(url) {
-  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)/.test(url);
+  return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url);
 }
 
 // Helper: detect direct audio URL
@@ -42,35 +66,169 @@ function isDirectAudioUrl(url) {
   return /\.(mp3|wav|ogg|webm|m4a|flac)(\?.*)?$/i.test(url);
 }
 
-// Helper: quick 10s YouTube metadata probe
+// Helper: quick YouTube metadata probe
 async function probeYouTube(url) {
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve({ blocked: true, reason: 'Timed out after 10s' }), 10000);
-    if (!ytdl) { clearTimeout(timeout); resolve({ blocked: true, reason: 'ytdl-core not installed' }); return; }
-    ytdl.getBasicInfo(url)
-      .then(() => { clearTimeout(timeout); resolve({ blocked: false }); })
-      .catch(() => { clearTimeout(timeout); resolve({ blocked: true, reason: 'YouTube is actively blocking automated downloads' }); });
+    if (!ytdl) {
+      resolve({
+        blocked: true,
+        reason: 'ytdl-core not installed'
+      });
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      resolve({
+        blocked: true,
+        reason: 'Timed out after 10s'
+      });
+    }, 10000);
+
+    ytdl
+      .getBasicInfo(url)
+      .then(() => {
+        clearTimeout(timeout);
+        resolve({ blocked: false });
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        resolve({
+          blocked: true,
+          reason: err.message || 'YouTube request failed'
+        });
+      });
   });
 }
 
-// Helper: download direct audio URL to temp file
-function downloadUrl(url, destPath) {
+/**
+ * Download a direct HTTP/HTTPS audio URL.
+ *
+ * Supports redirects and rejects non-2xx responses.
+ */
+function downloadUrl(url, destPath, redirectCount = 0) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(destPath);
-    https.get(url, (response) => {
-      if (response.statusCode !== 200) { reject(new Error(`HTTP ${response.statusCode}`)); return; }
+    if (redirectCount > 5) {
+      reject(new Error('Too many redirects while downloading audio'));
+      return;
+    }
+
+    let parsedUrl;
+
+    try {
+      parsedUrl = new URL(url);
+    } catch (err) {
+      reject(new Error('Invalid audio URL'));
+      return;
+    }
+
+    const protocol = parsedUrl.protocol.toLowerCase();
+
+    if (protocol !== 'http:' && protocol !== 'https:') {
+      reject(new Error('Only HTTP and HTTPS URLs are supported'));
+      return;
+    }
+
+    const client = protocol === 'https:' ? https : http;
+
+    const request = client.get(parsedUrl, (response) => {
+      // Handle redirects.
+      if (
+        response.statusCode >= 300 &&
+        response.statusCode < 400 &&
+        response.headers.location
+      ) {
+        response.resume();
+
+        const redirectedUrl = new URL(
+          response.headers.location,
+          parsedUrl
+        ).toString();
+
+        downloadUrl(
+          redirectedUrl,
+          destPath,
+          redirectCount + 1
+        )
+          .then(resolve)
+          .catch(reject);
+
+        return;
+      }
+
+      if (
+        !response.statusCode ||
+        response.statusCode < 200 ||
+        response.statusCode >= 300
+      ) {
+        response.resume();
+        reject(
+          new Error(`Audio download failed: HTTP ${response.statusCode}`)
+        );
+        return;
+      }
+
+      const file = fs.createWriteStream(destPath);
+
+      file.on('error', (err) => {
+        response.destroy();
+        reject(err);
+      });
+
+      response.on('error', (err) => {
+        file.destroy();
+        reject(err);
+      });
+
+      file.on('finish', () => {
+        file.close(() => resolve(destPath));
+      });
+
       response.pipe(file);
-      file.on('finish', () => { file.close(); resolve(destPath); });
-    }).on('error', reject);
+    });
+
+    request.setTimeout(30000, () => {
+      request.destroy(new Error('Audio download timed out'));
+    });
+
+    request.on('error', reject);
   });
+}
+
+/**
+ * Safely get the uploaded file from different multer configurations.
+ */
+function getUploadedFile(req) {
+  if (req.file) {
+    return req.file;
+  }
+
+  if (req.files?.audio) {
+    if (Array.isArray(req.files.audio)) {
+      return req.files.audio[0] || null;
+    }
+
+    // Some upload middleware configurations return a single object.
+    return req.files.audio;
+  }
+
+  return null;
 }
 
 // ==================== MAIN RECOGNIZE HANDLER ====================
+
 router.post('/', async (req, res) => {
+  let inputPath = null;
+  let normalizedPath = null;
+
   try {
-    const hasFile = req.file || (req.files && req.files.audio);
-    const url = req.body?.url?.trim();
-    let inputPath = null;
+    const uploadedFile = getUploadedFile(req);
+    const hasFile = !!uploadedFile;
+
+    const url =
+      typeof req.body?.url === 'string'
+        ? req.body.url.trim()
+        : '';
+
     let filename = 'unknown';
     let source = 'unknown';
 
@@ -78,73 +236,172 @@ router.post('/', async (req, res) => {
     if (url && !hasFile) {
       console.log('[GoMaa] URL provided:', url);
 
-      // YouTube URL: fast fail with instructions
+      // YouTube URL
       if (isYouTubeUrl(url)) {
         console.log('[GoMaa] YouTube URL detected:', url);
+
         const probe = await probeYouTube(url);
+
         if (probe.blocked) {
-          console.log('[GoMaa] YouTube metadata test failed:', probe.reason);
+          console.log(
+            '[GoMaa] YouTube metadata test failed:',
+            probe.reason
+          );
+
           return res.status(400).json({
-            error: 'YouTube is actively blocking automated downloads. Please download the audio manually: run yt-dlp -x --audio-format mp3 "' + url + '" then upload the MP3 file here.'
+            error:
+              'YouTube is blocking automated downloads. ' +
+              'Please download the audio manually with yt-dlp ' +
+              `and upload the MP3 file here.`
           });
         }
-        // If not blocked, you could add yt-dlp download here, but we recommend manual upload
+
         return res.status(400).json({
-          error: 'YouTube downloads are blocked. Please download manually with yt-dlp -x --audio-format mp3 "' + url + '" then upload the MP3.'
+          error:
+            'YouTube downloads are not supported directly. ' +
+            'Please download the audio manually with yt-dlp ' +
+            'and upload the MP3.'
         });
       }
 
-      // Direct audio URL: download via Node https
+      // Direct audio URL
       if (isDirectAudioUrl(url)) {
-        console.log('[GoMaa] Direct audio URL detected:', url);
-        const tempDir = path.join(__dirname, '..', '..', 'temp');
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-        const ext = path.extname(new URL(url).pathname) || '.mp3';
-        inputPath = path.join(tempDir, `download_${Date.now()}${ext}`);
+        console.log(
+          '[GoMaa] Direct audio URL detected:',
+          url
+        );
+
+        const tempDir = path.join(
+          __dirname,
+          '..',
+          '..',
+          'temp'
+        );
+
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        let ext = '.mp3';
+
+        try {
+          const parsedUrl = new URL(url);
+          ext =
+            path.extname(parsedUrl.pathname) || '.mp3';
+
+          // Prevent weird extensions from becoming filenames.
+          if (!/^\.(mp3|wav|ogg|webm|m4a|flac)$/i.test(ext)) {
+            ext = '.mp3';
+          }
+        } catch (err) {
+          return res.status(400).json({
+            error: 'Invalid audio URL.'
+          });
+        }
+
+        inputPath = path.join(
+          tempDir,
+          `download_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2, 8)}${ext}`
+        );
+
         await downloadUrl(url, inputPath);
+
         filename = path.basename(inputPath);
         source = 'url';
       } else {
-        return res.status(400).json({ error: 'Unsupported URL. Please provide a direct audio URL (.mp3, .wav, etc.) or upload a file.' });
+        return res.status(400).json({
+          error:
+            'Unsupported URL. Please provide a direct audio URL ' +
+            '(.mp3, .wav, .ogg, .webm, .m4a, .flac) or upload a file.'
+        });
       }
     }
 
     // -------- File upload handling --------
     if (hasFile) {
-      inputPath = req.file?.path || req.files.audio[0].path;
-      filename = req.file?.originalname || req.files.audio[0].originalname || 'upload';
+      inputPath = uploadedFile.path;
+
+      filename =
+        uploadedFile.originalname ||
+        path.basename(uploadedFile.path) ||
+        'upload';
+
       source = 'upload';
+
+      if (!inputPath || !fs.existsSync(inputPath)) {
+        return res.status(400).json({
+          error: 'Uploaded audio file could not be found.'
+        });
+      }
     }
 
     if (!inputPath) {
-      return res.status(400).json({ error: 'No file or valid URL provided.' });
+      return res.status(400).json({
+        error: 'No file or valid URL provided.'
+      });
     }
 
-    console.log(`[GoMaa v4.0.2] Analysing: ${filename} (source: ${source})`);
+    console.log(
+      `[GoMaa v4.0.3] Analysing: ${filename} (source: ${source})`
+    );
 
+    // ------------------------------------------------------------------
     // Normalize live recordings / WebM to 16kHz WAV for Whisper
-    if (ffmpeg && (filename.includes('live_recording') || filename.endsWith('.webm'))) {
-      const wavPath = inputPath.replace(/\.webm$/i, '_16k.wav');
+    // ------------------------------------------------------------------
+    const lowerFilename = filename.toLowerCase();
+
+    if (
+      ffmpeg &&
+      ffmpegStatic &&
+      (
+        lowerFilename.includes('live_recording') ||
+        lowerFilename.endsWith('.webm')
+      )
+    ) {
+      normalizedPath = inputPath.replace(
+        /\.[^.]+$/i,
+        '_16k.wav'
+      );
+
       try {
-        await normalizeLiveRecording(inputPath, wavPath);
-        inputPath = wavPath;
-        console.log('[GoMaa] Live recording normalized to:', inputPath);
+        await normalizeLiveRecording(
+          inputPath,
+          normalizedPath
+        );
+
+        inputPath = normalizedPath;
+
+        console.log(
+          '[GoMaa] Live recording normalized to:',
+          inputPath
+        );
       } catch (normErr) {
-        console.warn('[GoMaa] Normalization failed, using original:', normErr.message);
+        console.warn(
+          '[GoMaa] Normalization failed, using original:',
+          normErr.message
+        );
+
+        normalizedPath = null;
       }
     }
 
     // ------------------------------------------------------------------
-    // INSERT YOUR EXISTING ANALYSIS PIPELINE HERE:
-    // 1. Load audio (e.g., via wav decoder or ffmpeg)
+    // EXISTING ANALYSIS PIPELINE
+    // ------------------------------------------------------------------
+    //
+    // Replace this section with your real analysis:
+    //
+    // 1. Load audio
     // 2. YIN pitch detection
     // 3. Comb-filter beat detection
     // 4. Composition DB match
-    // 5. generateSegmentSwaras(audioDuration, composition, raga, pitchData)
-    // 6. Build response with raga, tala, composer, aroha, avaroha, segments, sahityam
+    // 5. generateSegmentSwaras(...)
+    // 6. Build raga/tala/composer/segments/sahityam response
+    //
     // ------------------------------------------------------------------
 
-    // Example response structure (replace with your actual analysis result):
     const analysisResult = {
       success: true,
       title: filename,
@@ -152,47 +409,126 @@ router.post('/', async (req, res) => {
       tala: 'Unknown',
       composer: 'Unknown',
       duration: 0,
-      source: source,
+      source,
       segments: [],
       sahityam: {},
       aroha: '',
       avaroha: '',
-      audioUrl: source === 'url' ? req.body.url : undefined
+      audioUrl: source === 'url' ? url : undefined
     };
 
     // ------------------------------------------------------------------
-    // DB SAVE (with new columns)
+    // DB SAVE
     // ------------------------------------------------------------------
     try {
-      const dbPath = path.join(__dirname, '..', '..', 'models', 'music.db');
-      const sqliteModule = require('../../core/db/sqlite');   // ← was '../core/db/sqlite' (wrong)
-      const db = typeof sqliteModule === 'function' ? sqliteModule(dbPath) : sqliteModule;
-      const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const dbPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        'models',
+        'music.db'
+      );
+
+      // Correct project-root-relative import.
+      const sqliteModule = require('../../core/db/sqlite');
+
+      const db =
+        typeof sqliteModule === 'function'
+          ? sqliteModule(dbPath)
+          : sqliteModule;
+
+      const id =
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 11)}`;
+
       const insert = db.prepare(`
-        INSERT INTO music (id, filename, originalName, compositionId, title, raga, tala, composer, duration, sahityam)
+        INSERT INTO music (
+          id,
+          filename,
+          originalName,
+          compositionId,
+          title,
+          raga,
+          tala,
+          composer,
+          duration,
+          sahityam
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      await insert.run(
+
+      /*
+       * IMPORTANT:
+       *
+       * compositionId was previously receiving:
+       *
+       *   analysisResult.title
+       *
+       * That is incorrect unless your schema intentionally uses
+       * the title as the composition ID.
+       *
+       * Use analysisResult.compositionId when available.
+       */
+      const result = insert.run(
         id,
         filename,
         filename,
-        analysisResult.title || null,
+        analysisResult.compositionId || null,
         analysisResult.title || null,
         analysisResult.raga || null,
         analysisResult.tala || null,
         analysisResult.composer || null,
-        analysisResult.duration || 0,
+        Number(analysisResult.duration) || 0,
         JSON.stringify(analysisResult.sahityam || {})
       );
-      console.log(`[GoMaa v4.0.2] Saved to DB: ${id}`);
-      if (typeof db.close === 'function') db.close();
+
+      // Supports both synchronous DBs (better-sqlite3)
+      // and Promise-returning wrappers.
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+
+      console.log(
+        `[GoMaa v4.0.3] Saved to DB: ${id}`
+      );
+
+      if (typeof db.close === 'function') {
+        db.close();
+      }
     } catch (dbErr) {
-      console.log('[GoMaa] DB save failed (non-fatal):', dbErr.message);
+      // DB failure should not prevent recognition response.
+      console.error(
+        '[GoMaa] DB save failed (non-fatal):',
+        dbErr
+      );
     }
-    res.json(analysisResult);
+
+    return res.json(analysisResult);
   } catch (err) {
-    console.error('[GoMaa] Recognize error:', err);
-    res.status(500).json({ error: err.message });
+    console.error(
+      '[GoMaa] Recognize error:',
+      err
+    );
+
+    return res.status(500).json({
+      error: err.message || 'Audio recognition failed.'
+    });
+  } finally {
+    // Remove generated normalized WAV.
+    if (
+      normalizedPath &&
+      fs.existsSync(normalizedPath)
+    ) {
+      try {
+        fs.unlinkSync(normalizedPath);
+      } catch (cleanupErr) {
+        console.warn(
+          '[GoMaa] Could not remove normalized file:',
+          cleanupErr.message
+        );
+      }
+    }
   }
 });
 
