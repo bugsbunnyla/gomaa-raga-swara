@@ -2,19 +2,24 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
-const https = require('https');
 const { generateSegmentSwaras } = require('../swaragen');
 
-// Try to load ytdl-core for YouTube detection (optional — graceful fallback)
-let ytdl = null;
-try {
-  ytdl = require('ytdl-core');
-} catch (e) {
-  console.warn('[recognize] ytdl-core not installed. YouTube detection disabled.');
-}
+// -----------------------------------------------------------------------------
+// URL downloader
+//
+// IMPORTANT:
+// This is the existing downloader in backend/utils/download.js.
+// YouTube extraction is handled there with yt-dlp.
+// -----------------------------------------------------------------------------
 
+const {
+  downloadFromUrl
+} = require('../utils/download');
+
+// -----------------------------------------------------------------------------
 // Live recording normalization via ffmpeg
+// -----------------------------------------------------------------------------
+
 let ffmpeg = null;
 let ffmpegStatic = null;
 
@@ -56,144 +61,6 @@ async function normalizeLiveRecording(inputPath, outputPath) {
   });
 }
 
-// Helper: detect YouTube URL
-function isYouTubeUrl(url) {
-  return /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url);
-}
-
-// Helper: detect direct audio URL
-function isDirectAudioUrl(url) {
-  return /\.(mp3|wav|ogg|webm|m4a|flac)(\?.*)?$/i.test(url);
-}
-
-// Helper: quick YouTube metadata probe
-async function probeYouTube(url) {
-  return new Promise((resolve) => {
-    if (!ytdl) {
-      resolve({
-        blocked: true,
-        reason: 'ytdl-core not installed'
-      });
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      resolve({
-        blocked: true,
-        reason: 'Timed out after 10s'
-      });
-    }, 10000);
-
-    ytdl
-      .getBasicInfo(url)
-      .then(() => {
-        clearTimeout(timeout);
-        resolve({ blocked: false });
-      })
-      .catch((err) => {
-        clearTimeout(timeout);
-        resolve({
-          blocked: true,
-          reason: err.message || 'YouTube request failed'
-        });
-      });
-  });
-}
-
-/**
- * Download a direct HTTP/HTTPS audio URL.
- *
- * Supports redirects and rejects non-2xx responses.
- */
-function downloadUrl(url, destPath, redirectCount = 0) {
-  return new Promise((resolve, reject) => {
-    if (redirectCount > 5) {
-      reject(new Error('Too many redirects while downloading audio'));
-      return;
-    }
-
-    let parsedUrl;
-
-    try {
-      parsedUrl = new URL(url);
-    } catch (err) {
-      reject(new Error('Invalid audio URL'));
-      return;
-    }
-
-    const protocol = parsedUrl.protocol.toLowerCase();
-
-    if (protocol !== 'http:' && protocol !== 'https:') {
-      reject(new Error('Only HTTP and HTTPS URLs are supported'));
-      return;
-    }
-
-    const client = protocol === 'https:' ? https : http;
-
-    const request = client.get(parsedUrl, (response) => {
-      // Handle redirects.
-      if (
-        response.statusCode >= 300 &&
-        response.statusCode < 400 &&
-        response.headers.location
-      ) {
-        response.resume();
-
-        const redirectedUrl = new URL(
-          response.headers.location,
-          parsedUrl
-        ).toString();
-
-        downloadUrl(
-          redirectedUrl,
-          destPath,
-          redirectCount + 1
-        )
-          .then(resolve)
-          .catch(reject);
-
-        return;
-      }
-
-      if (
-        !response.statusCode ||
-        response.statusCode < 200 ||
-        response.statusCode >= 300
-      ) {
-        response.resume();
-        reject(
-          new Error(`Audio download failed: HTTP ${response.statusCode}`)
-        );
-        return;
-      }
-
-      const file = fs.createWriteStream(destPath);
-
-      file.on('error', (err) => {
-        response.destroy();
-        reject(err);
-      });
-
-      response.on('error', (err) => {
-        file.destroy();
-        reject(err);
-      });
-
-      file.on('finish', () => {
-        file.close(() => resolve(destPath));
-      });
-
-      response.pipe(file);
-    });
-
-    request.setTimeout(30000, () => {
-      request.destroy(new Error('Audio download timed out'));
-    });
-
-    request.on('error', reject);
-  });
-}
-
 /**
  * Safely get the uploaded file from different multer configurations.
  */
@@ -220,9 +87,20 @@ router.post('/', async (req, res) => {
   let inputPath = null;
   let normalizedPath = null;
 
+  /*
+   * This tracks files created by downloadFromUrl().
+   *
+   * Uploaded files are NOT automatically deleted here because
+   * the existing application may have its own upload lifecycle.
+   */
+  let downloadedPath = null;
+
   try {
-    const uploadedFile = getUploadedFile(req);
-    const hasFile = !!uploadedFile;
+    const uploadedFile =
+      getUploadedFile(req);
+
+    const hasFile =
+      !!uploadedFile;
 
     const url =
       typeof req.body?.url === 'string'
@@ -232,114 +110,171 @@ router.post('/', async (req, res) => {
     let filename = 'unknown';
     let source = 'unknown';
 
-    // -------- URL handling --------
+    // =========================================================================
+    // URL HANDLING
+    // =========================================================================
+
     if (url && !hasFile) {
-      console.log('[GoMaa] URL provided:', url);
+      console.log(
+        '[GoMaa] URL provided:',
+        url
+      );
 
-      // YouTube URL
-      if (isYouTubeUrl(url)) {
-        console.log('[GoMaa] YouTube URL detected:', url);
+      /*
+       * IMPORTANT YOUTUBE FIX
+       *
+       * Previously this route:
+       *
+       *   1. detected YouTube
+       *   2. ran ytdl-core metadata probe
+       *   3. rejected the request
+       *
+       * It now delegates ALL URL downloading to the existing
+       * backend/utils/download.js utility.
+       *
+       * That utility handles:
+       *
+       *   YouTube URL
+       *       ↓
+       *   yt-dlp
+       *       ↓
+       *   MP3
+       *
+       * and:
+       *
+       *   direct audio URL
+       *       ↓
+       *   HTTP/HTTPS download
+       *       ↓
+       *   local audio file
+       */
 
-        const probe = await probeYouTube(url);
-
-        if (probe.blocked) {
-          console.log(
-            '[GoMaa] YouTube metadata test failed:',
-            probe.reason
+      try {
+        const tempDir =
+          path.join(
+            __dirname,
+            '..',
+            '..',
+            'temp'
           );
 
-          return res.status(400).json({
-            error:
-              'YouTube is blocking automated downloads. ' +
-              'Please download the audio manually with yt-dlp ' +
-              `and upload the MP3 file here.`
-          });
-        }
-
-        return res.status(400).json({
-          error:
-            'YouTube downloads are not supported directly. ' +
-            'Please download the audio manually with yt-dlp ' +
-            'and upload the MP3.'
-        });
-      }
-
-      // Direct audio URL
-      if (isDirectAudioUrl(url)) {
-        console.log(
-          '[GoMaa] Direct audio URL detected:',
-          url
-        );
-
-        const tempDir = path.join(
-          __dirname,
-          '..',
-          '..',
-          'temp'
-        );
-
         if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
+          fs.mkdirSync(
+            tempDir,
+            {
+              recursive: true
+            }
+          );
         }
 
-        let ext = '.mp3';
+        const downloaded =
+          await downloadFromUrl(
+            url,
+            tempDir
+          );
 
-        try {
-          const parsedUrl = new URL(url);
-          ext =
-            path.extname(parsedUrl.pathname) || '.mp3';
-
-          // Prevent weird extensions from becoming filenames.
-          if (!/^\.(mp3|wav|ogg|webm|m4a|flac)$/i.test(ext)) {
-            ext = '.mp3';
-          }
-        } catch (err) {
-          return res.status(400).json({
-            error: 'Invalid audio URL.'
-          });
+        if (
+          !downloaded ||
+          !downloaded.filePath
+        ) {
+          throw new Error(
+            'URL downloader did not return an audio file.'
+          );
         }
 
-        inputPath = path.join(
-          tempDir,
-          `download_${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2, 8)}${ext}`
+        inputPath =
+          downloaded.filePath;
+
+        downloadedPath =
+          downloaded.filePath;
+
+        filename =
+          downloaded.originalName ||
+          path.basename(
+            downloaded.filePath
+          ) ||
+          'audio';
+
+        /*
+         * Preserve the existing source semantics:
+         *
+         * YouTube and direct URL both come through the URL downloader,
+         * so the recognition result continues to identify the input
+         * as a URL source.
+         */
+        source = 'url';
+
+        console.log(
+          '[GoMaa] URL audio ready:',
+          inputPath
         );
 
-        await downloadUrl(url, inputPath);
+        /*
+         * If YouTube metadata is available, use the YouTube title
+         * as the filename/title input where possible.
+         *
+         * The analysis pipeline remains unchanged.
+         */
+        if (
+          downloaded.youtubeMetadata &&
+          downloaded.youtubeMetadata.title
+        ) {
+          filename =
+            downloaded.originalName ||
+            `${downloaded.youtubeMetadata.title}.mp3`;
+        }
 
-        filename = path.basename(inputPath);
-        source = 'url';
-      } else {
+      } catch (downloadErr) {
+        console.error(
+          '[GoMaa] URL download/extraction failed:',
+          downloadErr.message
+        );
+
         return res.status(400).json({
           error:
-            'Unsupported URL. Please provide a direct audio URL ' +
-            '(.mp3, .wav, .ogg, .webm, .m4a, .flac) or upload a file.'
+            downloadErr.message ||
+            'Unable to download or extract audio from URL.'
         });
       }
     }
 
-    // -------- File upload handling --------
+    // =========================================================================
+    // FILE UPLOAD HANDLING
+    // =========================================================================
+
     if (hasFile) {
-      inputPath = uploadedFile.path;
+      inputPath =
+        uploadedFile.path;
 
       filename =
         uploadedFile.originalname ||
-        path.basename(uploadedFile.path) ||
+        path.basename(
+          uploadedFile.path
+        ) ||
         'upload';
 
-      source = 'upload';
+      source =
+        'upload';
 
-      if (!inputPath || !fs.existsSync(inputPath)) {
+      if (
+        !inputPath ||
+        !fs.existsSync(inputPath)
+      ) {
         return res.status(400).json({
-          error: 'Uploaded audio file could not be found.'
+          error:
+            'Uploaded audio file could not be found.'
         });
       }
     }
 
+    // =========================================================================
+    // NO INPUT
+    // =========================================================================
+
     if (!inputPath) {
       return res.status(400).json({
-        error: 'No file or valid URL provided.'
+        error:
+          'No file or valid URL provided.'
       });
     }
 
@@ -347,23 +282,30 @@ router.post('/', async (req, res) => {
       `[GoMaa v4.0.3] Analysing: ${filename} (source: ${source})`
     );
 
-    // ------------------------------------------------------------------
-    // Normalize live recordings / WebM to 16kHz WAV for Whisper
-    // ------------------------------------------------------------------
-    const lowerFilename = filename.toLowerCase();
+    // =========================================================================
+    // NORMALIZE LIVE RECORDINGS / WEBM TO 16KHZ WAV FOR WHISPER
+    // =========================================================================
+
+    const lowerFilename =
+      filename.toLowerCase();
 
     if (
       ffmpeg &&
       ffmpegStatic &&
       (
-        lowerFilename.includes('live_recording') ||
-        lowerFilename.endsWith('.webm')
+        lowerFilename.includes(
+          'live_recording'
+        ) ||
+        lowerFilename.endsWith(
+          '.webm'
+        )
       )
     ) {
-      normalizedPath = inputPath.replace(
-        /\.[^.]+$/i,
-        '_16k.wav'
-      );
+      normalizedPath =
+        inputPath.replace(
+          /\.[^.]+$/i,
+          '_16k.wav'
+        );
 
       try {
         await normalizeLiveRecording(
@@ -371,19 +313,22 @@ router.post('/', async (req, res) => {
           normalizedPath
         );
 
-        inputPath = normalizedPath;
+        inputPath =
+          normalizedPath;
 
         console.log(
           '[GoMaa] Live recording normalized to:',
           inputPath
         );
+
       } catch (normErr) {
         console.warn(
           '[GoMaa] Normalization failed, using original:',
           normErr.message
         );
 
-        normalizedPath = null;
+        normalizedPath =
+          null;
       }
     }
 
@@ -414,23 +359,35 @@ router.post('/', async (req, res) => {
       sahityam: {},
       aroha: '',
       avaroha: '',
-      audioUrl: source === 'url' ? url : undefined
+
+      /*
+       * Preserve the existing response shape.
+       *
+       * For URL inputs this remains the original URL, as before.
+       */
+      audioUrl:
+        source === 'url'
+          ? url
+          : undefined
     };
 
     // ------------------------------------------------------------------
     // DB SAVE
     // ------------------------------------------------------------------
+
     try {
-      const dbPath = path.join(
-        __dirname,
-        '..',
-        '..',
-        'models',
-        'music.db'
-      );
+      const dbPath =
+        path.join(
+          __dirname,
+          '..',
+          '..',
+          'models',
+          'music.db'
+        );
 
       // Correct project-root-relative import.
-      const sqliteModule = require('../../core/db/sqlite');
+      const sqliteModule =
+        require('../../core/db/sqlite');
 
       const db =
         typeof sqliteModule === 'function'
@@ -442,21 +399,22 @@ router.post('/', async (req, res) => {
           .toString(36)
           .slice(2, 11)}`;
 
-      const insert = db.prepare(`
-        INSERT INTO music (
-          id,
-          filename,
-          originalName,
-          compositionId,
-          title,
-          raga,
-          tala,
-          composer,
-          duration,
-          sahityam
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      const insert =
+        db.prepare(`
+          INSERT INTO music (
+            id,
+            filename,
+            originalName,
+            compositionId,
+            title,
+            raga,
+            tala,
+            composer,
+            duration,
+            sahityam
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
 
       /*
        * IMPORTANT:
@@ -470,22 +428,31 @@ router.post('/', async (req, res) => {
        *
        * Use analysisResult.compositionId when available.
        */
-      const result = insert.run(
-        id,
-        filename,
-        filename,
-        analysisResult.compositionId || null,
-        analysisResult.title || null,
-        analysisResult.raga || null,
-        analysisResult.tala || null,
-        analysisResult.composer || null,
-        Number(analysisResult.duration) || 0,
-        JSON.stringify(analysisResult.sahityam || {})
-      );
+
+      const result =
+        insert.run(
+          id,
+          filename,
+          filename,
+          analysisResult.compositionId || null,
+          analysisResult.title || null,
+          analysisResult.raga || null,
+          analysisResult.tala || null,
+          analysisResult.composer || null,
+          Number(
+            analysisResult.duration
+          ) || 0,
+          JSON.stringify(
+            analysisResult.sahityam || {}
+          )
+        );
 
       // Supports both synchronous DBs (better-sqlite3)
       // and Promise-returning wrappers.
-      if (result && typeof result.then === 'function') {
+      if (
+        result &&
+        typeof result.then === 'function'
+      ) {
         await result;
       }
 
@@ -493,9 +460,12 @@ router.post('/', async (req, res) => {
         `[GoMaa v4.0.3] Saved to DB: ${id}`
       );
 
-      if (typeof db.close === 'function') {
+      if (
+        typeof db.close === 'function'
+      ) {
         db.close();
       }
+
     } catch (dbErr) {
       // DB failure should not prevent recognition response.
       console.error(
@@ -504,7 +474,10 @@ router.post('/', async (req, res) => {
       );
     }
 
-    return res.json(analysisResult);
+    return res.json(
+      analysisResult
+    );
+
   } catch (err) {
     console.error(
       '[GoMaa] Recognize error:',
@@ -512,19 +485,57 @@ router.post('/', async (req, res) => {
     );
 
     return res.status(500).json({
-      error: err.message || 'Audio recognition failed.'
+      error:
+        err.message ||
+        'Audio recognition failed.'
     });
+
   } finally {
+    // -------------------------------------------------------------------------
     // Remove generated normalized WAV.
+    // -------------------------------------------------------------------------
+
     if (
       normalizedPath &&
       fs.existsSync(normalizedPath)
     ) {
       try {
-        fs.unlinkSync(normalizedPath);
+        fs.unlinkSync(
+          normalizedPath
+        );
       } catch (cleanupErr) {
         console.warn(
           '[GoMaa] Could not remove normalized file:',
+          cleanupErr.message
+        );
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Remove downloaded URL audio.
+    //
+    // Only files created by downloadFromUrl() are removed here.
+    // Uploaded files are left alone.
+    // -------------------------------------------------------------------------
+
+    if (
+      downloadedPath &&
+      downloadedPath !== normalizedPath &&
+      fs.existsSync(downloadedPath)
+    ) {
+      try {
+        fs.unlinkSync(
+          downloadedPath
+        );
+
+        console.log(
+          '[GoMaa] Removed temporary downloaded audio:',
+          downloadedPath
+        );
+
+      } catch (cleanupErr) {
+        console.warn(
+          '[GoMaa] Could not remove downloaded audio:',
           cleanupErr.message
         );
       }
