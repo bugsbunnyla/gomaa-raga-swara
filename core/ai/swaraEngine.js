@@ -123,4 +123,42 @@ function generateFullSwaras(opts) {
   return result;
 }
 
-module.exports = { generateFullSwaras, swaraToWestern: require("./scoreEngine").swaraToWestern };
+/**
+ * generateSwaraSequence — Wrapper for recognize.js compatibility.
+ * Returns { swaras, gamakas, pattern, language }.
+ */
+function generateSwaraSequence(ragaName, talaName, section, count, opts = {}) {
+  const lang = opts.language || 'te';
+  // Try to load raga DB for aroha/avaroha
+  const fs = require('fs');
+  const path = require('path');
+  let aroha = '', avaroha = '';
+  try {
+    const dbPath = path.join(__dirname, '../../models/raga_db.json');
+    const ragas = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+    const raga = (Array.isArray(ragas) ? ragas : ragas.ragas || []).find(
+      r => r.name?.toLowerCase() === ragaName.toLowerCase()
+    );
+    if (raga) {
+      aroha = Array.isArray(raga.arohana) ? raga.arohana.join(' ') : (raga.aroha || '');
+      avaroha = Array.isArray(raga.avarohana) ? raga.avarohana.join(' ') : (raga.avaroha || '');
+    }
+  } catch (_) {}
+
+  const full = generateFullSwaras({
+    raga: ragaName, aroha, avaroha, tala: talaName,
+    bpm: 120, duration: 120, compositionMatch: null
+  });
+
+  const swaraLine = full.swaraLine || '';
+  const swaras = swaraLine.split(/\s+/).filter(Boolean).slice(0, count || 16);
+
+  return {
+    swaras: swaras,
+    gamakas: swaras.map(() => 'sustain'),
+    pattern: swaraLine,
+    language: lang
+  };
+}
+
+module.exports = { generateFullSwaras, generateSwaraSequence, swaraToWestern: require("./scoreEngine").swaraToWestern };

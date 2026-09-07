@@ -2,6 +2,8 @@
  * GoMaa Raga Vidya — ragaEngine.js v4.0.2-patch
  * Multi-modal raga detection with unoverrideable composition match.
  * Fix: Defensive against raga_db.json missing or malformed.
+ * Fix: Handle recognize.js calling convention (samples, sampleRate, opts).
+ * Fix: Handle raga_db.json with array arohana/avarohana and melakarta field.
  */
 
 const fs = require("fs");
@@ -11,7 +13,22 @@ let RAGA_DB = { ragas: [] };
 try {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "../../models/raga_db.json"), "utf8"));
   const ragas = Array.isArray(raw) ? raw : (raw?.ragas || []);
-  RAGA_DB = { ragas };
+  // Normalize: ensure aroha/avaroha are strings, melakartaNum exists
+  RAGA_DB = { ragas: ragas.map(r => {
+    if (!r) return r;
+    // Handle array arohana -> string aroha
+    if (Array.isArray(r.arohana) && !r.aroha) {
+      r.aroha = r.arohana.join(' ');
+    }
+    if (Array.isArray(r.avarohana) && !r.avaroha) {
+      r.avaroha = r.avarohana.join(' ');
+    }
+    // Handle melakarta -> melakartaNum
+    if (r.melakarta !== undefined && r.melakartaNum === undefined) {
+      r.melakartaNum = r.melakarta;
+    }
+    return r;
+  }).filter(Boolean) };
 } catch (e) {
   console.warn("[ragaEngine] raga_db.json not found or invalid — raga detection limited:", e.message);
 }
@@ -92,16 +109,50 @@ function dtwDistance(a, b) {
   return dp[n][m] / Math.max(n, m);
 }
 
-function detectRagaEnhanced(pitches, scaleResult, talaResult, compositionMatch, duration) {
+// ── Simple pitch extraction from raw PCM samples (YIN-like) ────────────
+// Used when recognize.js calls us with (audioBuffer, sampleRate, opts)
+function extractPitchesFromSamples(samples, sr) {
+  const FRAME = 2048;
+  const HOP = 512;
+  const frames = Math.floor((samples.length - FRAME) / HOP);
+  const pitches = [];
+  for (let f = 0; f < frames; f++) {
+    const off = f * HOP;
+    const frame = samples.slice(off, off + FRAME);
+    // Simple energy gate
+    let energy = 0;
+    for (let i = 0; i < FRAME; i++) energy += frame[i] * frame[i];
+    energy = Math.sqrt(energy / FRAME);
+    if (energy < 0.006) { pitches.push(0); continue; }
+
+    // Autocorrelation for fundamental
+    const N = frame.length;
+    const half = Math.floor(N / 2);
+    let bestLag = 0, bestCorr = -1;
+    for (let tau = 40; tau < half; tau++) { // 40 ≈ 22050/550Hz max
+      let c = 0;
+      for (let i = 0; i < half; i++) c += frame[i] * frame[i + tau];
+      if (c > bestCorr) { bestCorr = c; bestLag = tau; }
+    }
+    const freq = bestLag > 0 ? sr / bestLag : 0;
+    if (freq > 140 && freq < 900) pitches.push(freq);
+    else pitches.push(0);
+  }
+  return pitches;
+}
+
+function detectRagaEnhanced(pitchesOrSamples, sampleRateOrScaleResult, optsOrTalaResult, compositionMatch, duration) {
   // v4.0.2: If composition match exists, return immediately.
   if (compositionMatch) {
     return {
       raga: compositionMatch.raga,
+      parentRaga: compositionMatch.parent || compositionMatch.raga,
       parent: compositionMatch.parent || compositionMatch.raga,
       aroha: compositionMatch.aroha || "",
       avaroha: compositionMatch.avaroha || "",
       confidence: 0.99,
       method: "composition_hint",
+      ragaNumber: compositionMatch.melakartaNum || null,
       melakartaNum: compositionMatch.melakartaNum || null,
       janya: compositionMatch.janya || false,
       timeOfDay: compositionMatch.timeOfDay || "",
@@ -109,12 +160,27 @@ function detectRagaEnhanced(pitches, scaleResult, talaResult, compositionMatch, 
     };
   }
 
+  // Detect calling convention from recognize.js: (audioBuffer, sampleRate, { composition: null })
+  let pitches, scaleResult, talaResult;
+  if (pitchesOrSamples instanceof Float32Array && typeof sampleRateOrScaleResult === 'number') {
+    // Called with raw PCM samples — extract pitches
+    pitches = extractPitchesFromSamples(pitchesOrSamples, sampleRateOrScaleResult);
+    scaleResult = null;
+    talaResult = optsOrTalaResult || {};
+    compositionMatch = null;
+  } else {
+    // Standard calling convention
+    pitches = pitchesOrSamples;
+    scaleResult = sampleRateOrScaleResult;
+    talaResult = optsOrTalaResult;
+  }
+
   const chroma = scaleResult?.chroma || chromaFromPitches(pitches, 44100);
   const intervalProf = intervalDTWProfile(pitches);
   const candidates = RAGA_DB.ragas || [];
 
   if (!candidates.length) {
-    return { raga: "Unknown", parent: "Unknown", aroha: "", avaroha: "", confidence: 0, method: "no_raga_db" };
+    return { raga: "Unknown", parent: "Unknown", parentRaga: "Unknown", aroha: "", avaroha: "", confidence: 0, method: "no_raga_db", ragaNumber: 0, melakartaNum: null, janya: false };
   }
 
   let best = null;
@@ -150,7 +216,7 @@ function detectRagaEnhanced(pitches, scaleResult, talaResult, compositionMatch, 
   }
 
   if (!best) {
-    return { raga: "Unknown", parent: "Unknown", aroha: "", avaroha: "", confidence: 0, method: "none" };
+    return { raga: "Unknown", parent: "Unknown", parentRaga: "Unknown", aroha: "", avaroha: "", confidence: 0, method: "none", ragaNumber: 0, melakartaNum: null, janya: false };
   }
 
   // Janya detection
@@ -175,10 +241,12 @@ function detectRagaEnhanced(pitches, scaleResult, talaResult, compositionMatch, 
   return {
     raga: best.name,
     parent,
+    parentRaga: parent,
     aroha: best.aroha,
     avaroha: best.avaroha,
     confidence: Math.round(bestScore * 1000) / 1000,
     method: "multi_modal_chroma_interval_coverage",
+    ragaNumber: best.melakartaNum || null,
     melakartaNum: best.melakartaNum || null,
     janya,
     timeOfDay: best.timeOfDay || "",

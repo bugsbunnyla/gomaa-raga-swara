@@ -58,10 +58,40 @@ function extractAudioMeta(filePath) {
   } catch(_){ return null; }
 }
 
+/**
+ * getAudioMetadata — Returns {duration, sampleRate, channels} for an audio file
+ * Uses ffprobe streams info. Falls back to safe defaults if ffprobe fails.
+ */
+function getAudioMetadata(filePath) {
+  try {
+    const r = spawnSync('ffprobe', [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      '-show_streams',
+      filePath
+    ], { encoding: 'utf8', timeout: 15000 });
+    if (r.status !== 0 || !r.stdout) {
+      return { duration: 0, sampleRate: 44100, channels: 1 };
+    }
+    const probe = JSON.parse(r.stdout);
+    const fmt = probe.format || {};
+    const audioStream = (probe.streams || []).find(s => s.codec_type === 'audio') || {};
+
+    const duration = parseFloat(fmt.duration) || parseFloat(audioStream.duration) || 0;
+    const sampleRate = parseInt(audioStream.sample_rate, 10) || 44100;
+    const channels = parseInt(audioStream.channels, 10) || 1;
+
+    return { duration, sampleRate, channels };
+  } catch (_) {
+    return { duration: 0, sampleRate: 44100, channels: 1 };
+  }
+}
+
 function parseTala(str){
   if(!str) return null;
   const key=Object.keys(TALA_MAP).find(k=>str.toLowerCase().includes(k));
   return key?TALA_MAP[key]:null;
 }
 
-module.exports = { extractAudioMeta, parseTala, TALA_MAP };
+module.exports = { extractAudioMeta, getAudioMetadata, parseTala, TALA_MAP };

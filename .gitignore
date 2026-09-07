@@ -1,5 +1,6 @@
 .env/
 env/
+temp/
 node_modules/
 uploads/
 datasets/

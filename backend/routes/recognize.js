@@ -199,7 +199,9 @@ router.post('/', async (req, res) => {
     // 8. TRANSCRIPTION (Point 5)
     let transcribeResult = { text: '', words: [], language: 'auto' };
     try {
-      transcribeResult = await transcribeAudio(inputPath, { model: 'small', language: '', wordTimestamps: true });
+      console.log(`[GoMaa] Starting transcription with Whisper (model=small, ~${Math.ceil(duration/60)}min audio). This may take several minutes on CPU...`);
+      const whisperModel = req.body?.model || req.headers["x-model"] || 'base';  // base = fast, small = accurate for speech
+      transcribeResult = await transcribeAudio(inputPath, { model: whisperModel, language: '', wordTimestamps: true });
       const cleaned = cleanupTranscription(transcribeResult.text);
       if (detectHallucination(cleaned)) { console.log('[GoMaa] Transcription hallucinated'); transcribeResult.text = ''; transcribeResult.words = []; transcribeResult.garbage = true; }
       else { transcribeResult.text = cleaned; transcribeResult.garbage = false; }
@@ -284,7 +286,7 @@ router.post('/', async (req, res) => {
       savedId = id;
       console.log(`[GoMaa v4.0.4] Saved to DB: ${id}`);
       try { addToIndex(id, scaleResult.chroma || [], { title: analysisResult.title, raga: analysisResult.raga }); } catch (e) {}
-      if (typeof db.close === 'function') db.close();
+      // DO NOT close db here — it's a shared module-level connection
     } catch (dbErr) { console.error('[GoMaa] DB save failed (non-fatal):', dbErr.message); }
 
     analysisResult.id = savedId;

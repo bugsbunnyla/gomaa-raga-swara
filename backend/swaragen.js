@@ -1,4 +1,17 @@
 function generateSegmentSwaras(audioDuration, composition, raga, pitchData) {
+  // Guard: composition may be null from recognize.js
+  if (!composition) {
+    composition = {};
+  }
+  // Guard: raga may be a string (raga name) rather than an object
+  if (typeof raga === 'string') {
+    raga = { name: raga };
+  }
+  // Guard: pitchData may be an object (from pitchDetect) rather than array
+  if (pitchData && typeof pitchData === 'object' && !Array.isArray(pitchData)) {
+    pitchData = pitchData.pitches || [];
+  }
+
   const segments = [];
   const structure = composition.structure || {
     aalapana: 0.15, pallavi: 0.15, anupallavi: 0.15,
@@ -18,12 +31,13 @@ function generateSegmentSwaras(audioDuration, composition, raga, pitchData) {
   for (const [section, bounds] of Object.entries(boundaries)) {
     const hint = composition.swara_hints?.[section]
               || composition.swara_hints?.['default']
-              || raga.arohana?.join(' ')
+              || (Array.isArray(raga.arohana) ? raga.arohana.join(' ') : raga.arohana)
+              || (Array.isArray(raga.aroha) ? raga.aroha.join(' ') : raga.aroha)
               || '';
 
-    const sliceStart = Math.floor((bounds.start / audioDuration) * pitchData.length);
-    const sliceEnd = Math.floor((bounds.end / audioDuration) * pitchData.length);
-    const slicePitches = pitchData.slice(sliceStart, sliceEnd).filter(p => p > 0);
+    const sliceStart = Math.floor((bounds.start / audioDuration) * (pitchData?.length || 1));
+    const sliceEnd = Math.floor((bounds.end / audioDuration) * (pitchData?.length || 1));
+    const slicePitches = (pitchData || []).slice(sliceStart, sliceEnd).filter(p => p > 0);
     const quantized = quantizeToRaga(slicePitches, raga.frequency_map || {});
 
     segments.push({

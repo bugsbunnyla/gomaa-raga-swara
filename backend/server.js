@@ -35,7 +35,13 @@ app.get('/api/ragas-chart', async (req, res) => {
     res.json(enriched);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-
+app.get('/api/audio/:id', async (req, res) => {
+  try {
+    const row = await db.prepare('SELECT filePath FROM music WHERE id = ?').get(req.params.id);
+    if (!row || !row.filePath || !fs.existsSync(row.filePath)) return res.status(404).json({ error: 'Audio not found' });
+    res.sendFile(path.resolve(row.filePath));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // ── Saved list (includes approval status) ──
 app.get('/api/saved', async (req, res) => {
   try {
@@ -54,7 +60,7 @@ app.get('/api/saved', async (req, res) => {
       tala: r.tala, tempo: r.tempo, duration: r.duration, approved: r.approved,
       approvedAt: r.approvedAt, approvedBy: r.approvedBy,
       created_at: r.createdAt ? new Date(r.createdAt * 1000).toISOString() : null,
-      audioUrl: r.filePath, sahityam: r.sahityam,
+      audioUrl: r.filePath && !r.filePath.includes(':\\\\') ? `/api/audio/${r.id}` : undefined, sahityam: r.sahityam,
       lyricsJson: r.lyricsJson ? JSON.parse(r.lyricsJson) : null,
       analysisJson: r.analysisJson ? JSON.parse(r.analysisJson) : null,
       transcriptionJson: r.transcriptionJson ? JSON.parse(r.transcriptionJson) : null,

@@ -195,6 +195,17 @@ function analysePitch(samples, sr) {
   const noteNames = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
   const saWestern = noteNames[((saMidi % 12) + 12) % 12] + Math.floor(saMidi / 12 - 1);
 
+  // Build noteTimeline for recognize.js compatibility
+  const noteTimeline = mapped
+    .map((f, i) => f ? { time: +(i * HOP / sr).toFixed(3), note: f.swara, freq: f.freq, semi: f.semi } : null)
+    .filter(Boolean);
+
+  // Build detectedSwaras list (unique swaras found)
+  const detectedSwaras = [...new Set(mapped.filter(Boolean).map(f => f.swara))];
+
+  // Build pitches array (freq values for scale detection)
+  const pitches = mapped.map(f => f ? f.freq : 0);
+
   return {
     sa_hz:         +sa_hz.toFixed(2),
     sa_western:    saWestern,
@@ -209,6 +220,13 @@ function analysePitch(samples, sr) {
     voicedFrames:  voiced.length,
     totalFrames:   frames,
     voicedRatio:   +(voiced.length / Math.max(1, frames)).toFixed(3),
+    // Aliases for recognize.js compatibility
+    shruti:        +sa_hz.toFixed(2),
+    aroha:         aroha,
+    avarohana:     avaroha,
+    detectedSwaras: detectedSwaras,
+    noteTimeline:  noteTimeline,
+    pitches:       pitches,
   };
 }
 

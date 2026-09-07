@@ -111,8 +111,8 @@ function detectVibhagamPattern(beats, totalBeats) {
 function matchTala(bpm, detectedBeats, vibhagamHint) {
   const db = _loadTalaDB();
   const allTalas = [
-    ...db.talas,
-    ...db.chapuTalas,
+    ...(db.talas || []),
+    ...(db.chapuTalas || []),
   ];
 
   // Score each tala by how well its beat count matches detected cycle length
@@ -124,6 +124,15 @@ function matchTala(bpm, detectedBeats, vibhagamHint) {
     const score = 1 / (1 + diff);
     return { tala: t, score, beats: b };
   }).sort((a, b) => b.score - a.score);
+
+  if (!scored.length) {
+    return {
+      name: 'Unknown', commonName: 'Unknown', parent: '', jaati: '',
+      beats: 8, pattern: [8], beatPattern: '8', angas: 'I',
+      bpm, tempoName: 'Madhyama', confidence: 'low', top3: [],
+      tala: 'Unknown', tempo: bpm
+    };
+  }
 
   const best = scored[0].tala;
   const beatsPerCycle = best.beats || best.pattern?.reduce((s, v) => s + v, 0) || 8;
@@ -143,7 +152,10 @@ function matchTala(bpm, detectedBeats, vibhagamHint) {
     top3:         scored.slice(0, 3).map(s => ({
       name: s.tala.name, commonName: s.tala.commonName || s.tala.name,
       beats: s.beats, score: +s.score.toFixed(3)
-    }))
+    })),
+    // Aliases for recognize.js compatibility
+    tala:         best.name || best.commonName || 'Unknown',
+    tempo:        bpm
   };
 }
 

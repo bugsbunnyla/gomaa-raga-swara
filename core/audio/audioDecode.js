@@ -58,6 +58,15 @@ function decodeToFloatPCM(filePath, targetSampleRate = 22050) {
   });
 }
 
+/**
+ * decodeAudio — Returns raw Float32Array PCM samples for analysis pipelines.
+ * This is the function expected by backend/routes/recognize.js.
+ */
+async function decodeAudio(filePath, targetSampleRate = 22050) {
+  const result = await decodeToFloatPCM(filePath, targetSampleRate);
+  return result.floatSamples;
+}
+
 function readPCMFloats(filePath, sampleRate = 22050) {
   return decodeToFloatPCM(filePath, sampleRate);
 }
@@ -66,5 +75,6 @@ module.exports = {
   isFFmpegAvailable,
   ensureExtension,
   decodeToFloatPCM,
+  decodeAudio,
   readPCMFloats
 };

@@ -1,7 +1,7 @@
 /**
  * GoMaa Raga Vidya — scaleEngine.js v4.0.2-patch
  * Bayesian chroma with raga prior boosting.
- * Fix: Defensive DB access.
+ * Fix: Defensive DB access; handle array-format raga_db.json.
  */
 
 const fs = require("fs");
@@ -10,8 +10,14 @@ const path = require("path");
 let RAGA_DB = { ragas: [] };
 try {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "../../models/raga_db.json"), "utf8"));
-  if (raw && Array.isArray(raw.ragas)) RAGA_DB = raw;
-} catch { }
+  if (Array.isArray(raw)) {
+    RAGA_DB = { ragas: raw };
+  } else if (raw && Array.isArray(raw.ragas)) {
+    RAGA_DB = raw;
+  }
+} catch (e) {
+  console.warn("[scaleEngine] raga_db.json not found or invalid:", e.message);
+}
 
 const SWARA_TO_SEMI = {
   "s":0,"r1":1,"r2":2,"r3":3,"g1":1,"g2":2,"g3":3,
@@ -20,6 +26,7 @@ const SWARA_TO_SEMI = {
 
 function parseSwaraLine(line) {
   if (!line) return [];
+  if (Array.isArray(line)) return line.map(s => SWARA_TO_SEMI[s.toLowerCase()]).filter(x => x !== undefined);
   return line.toLowerCase().split(/\s+/).map(s => SWARA_TO_SEMI[s]).filter(x => x !== undefined);
 }
 
@@ -39,14 +46,16 @@ function chromaFromPitches(pitches, sampleRate) {
   return hist.map(v => v / sum);
 }
 
-function detectScaleBayesian(pitches, sampleRate, compositionMatch) {
+function detectScaleBayesian(pitches, sampleRate, ragaResult) {
   const chroma = chromaFromPitches(pitches, sampleRate);
 
   let prior = new Array(12).fill(1);
-  if (compositionMatch && RAGA_DB.ragas && RAGA_DB.ragas.length) {
-    const raga = RAGA_DB.ragas.find(r => r && r.name && r.name.toLowerCase() === compositionMatch.raga.toLowerCase());
+  if (ragaResult && ragaResult.raga && RAGA_DB.ragas && RAGA_DB.ragas.length) {
+    const raga = RAGA_DB.ragas.find(r => r && r.name && r.name.toLowerCase() === ragaResult.raga.toLowerCase());
     if (raga) {
-      const notes = [...new Set([...parseSwaraLine(raga.aroha), ...parseSwaraLine(raga.avaroha)])];
+      const arohaStr = Array.isArray(raga.arohana) ? raga.arohana.join(' ') : (raga.aroha || '');
+      const avarohaStr = Array.isArray(raga.avarohana) ? raga.avarohana.join(' ') : (raga.avaroha || '');
+      const notes = [...new Set([...parseSwaraLine(arohaStr), ...parseSwaraLine(avarohaStr)])];
       notes.forEach(s => { if (s >= 0 && s < 12) prior[s] = 3.0; });
     }
   }
