@@ -10,11 +10,8 @@ const path = require("path");
 let RAGA_DB = { ragas: [] };
 try {
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, "../../models/raga_db.json"), "utf8"));
-  if (raw && Array.isArray(raw.ragas)) {
-    RAGA_DB = raw;
-  } else {
-    console.warn("[ragaEngine] raga_db.json missing 'ragas' array — using empty DB");
-  }
+  const ragas = Array.isArray(raw) ? raw : (raw?.ragas || []);
+  RAGA_DB = { ragas };
 } catch (e) {
   console.warn("[ragaEngine] raga_db.json not found or invalid — raga detection limited:", e.message);
 }
