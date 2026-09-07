@@ -1,6 +1,7 @@
 "use strict";
 /**
  * GoMaa Raga Vidya v4.0 — SQLite Database (Async, Fixed)
+ * Patch: added .prepare() defensive fallback for better-sqlite3-style callers
  */
 
 const path = require("path");
@@ -71,7 +72,7 @@ function prepare(sql) {
 
 const api = { getDB, run, get, all, close, prepare };
 
-/* Allow: const db = require('./sqlite')(dbPath)  — same pattern as better-sqlite3 */
+/* Allow: const db = require('./sqlite')(dbPath) — same pattern as better-sqlite3 */
 function createDB(overriddenPath) {
   if (overriddenPath && overriddenPath !== DB_PATH) {
     console.warn("[sqlite] Path override ignored; using", DB_PATH);
