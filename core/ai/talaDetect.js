@@ -118,6 +118,15 @@ function matchTala(bpm, detectedBeats, vibhagamHint) {
   // Score each tala by how well its beat count matches detected cycle length
   const cycleLen = detectedBeats || vibhagamHint || 8;
 
+  if (!allTalas.length) {
+    return {
+      name: 'Unknown', commonName: 'Unknown', parent: '', jaati: '',
+      beats: 8, pattern: [8], beatPattern: '8', angas: 'I',
+      bpm, tempoName: 'Madhyama', confidence: 0, top3: [],
+      tala: 'Unknown', tempo: bpm
+    };
+  }
+
   const scored = allTalas.map(t => {
     const b = t.beats || t.pattern?.reduce((s, v) => s + v, 0) || 8;
     const diff = Math.abs(b - cycleLen);
@@ -129,13 +138,14 @@ function matchTala(bpm, detectedBeats, vibhagamHint) {
     return {
       name: 'Unknown', commonName: 'Unknown', parent: '', jaati: '',
       beats: 8, pattern: [8], beatPattern: '8', angas: 'I',
-      bpm, tempoName: 'Madhyama', confidence: 'low', top3: [],
+      bpm, tempoName: 'Madhyama', confidence: 0, top3: [],
       tala: 'Unknown', tempo: bpm
     };
   }
 
   const best = scored[0].tala;
   const beatsPerCycle = best.beats || best.pattern?.reduce((s, v) => s + v, 0) || 8;
+  const confidence = scored[0].score;
 
   return {
     name:         best.name || best.commonName || 'Unknown',
@@ -148,7 +158,7 @@ function matchTala(bpm, detectedBeats, vibhagamHint) {
     angas:        best.angas || 'I',
     bpm,
     tempoName:    bpm < 45 ? 'Ati Vilambita' : bpm < 80 ? 'Vilambita' : bpm < 140 ? 'Madhyama' : bpm < 200 ? 'Druta' : 'Ati Druta',
-    confidence:   scored[0].score > 0.85 ? 'high' : scored[0].score > 0.6 ? 'medium' : 'low',
+    confidence:   confidence,  // 0..1 number, not string
     top3:         scored.slice(0, 3).map(s => ({
       name: s.tala.name, commonName: s.tala.commonName || s.tala.name,
       beats: s.beats, score: +s.score.toFixed(3)

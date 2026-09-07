@@ -19,7 +19,118 @@
     "aliases": [
       "mamava",
       "mamava_sada",
-      "mamava_sada_janani"
+      "mamava_sada_janani",
+      "janani",
+      "swati_tirunal_mamava"
+    ]
+  },
+  {
+    "name": "Rama_Kadha",
+    "raga": "madhyamavathi",
+    "tala": "Adi",
+    "composer": "Thyagaraja",
+    "melakartaNum": 22,
+    "parent": "kharaharapriya",
+    "janya": true,
+    "aroha": "S R2 M1 P N2 S",
+    "avaroha": "S N2 P M1 R2 S",
+    "sahityam": {
+      "pallavi": "rāma kathā sudhā rasaṃ pīyūṣam",
+      "anupallavi": "rāma kathā sudhā rasaṃ pīyūṣam",
+      "charanam1": "rāma kathā sudhā rasaṃ pīyūṣam"
+    },
+    "aliases": [
+      "rama_kadha",
+      "rama_katha",
+      "rama_katha_sudha",
+      "rama_kadha_sudha_rasam",
+      "rama_katha_sudha_rasam",
+      "rama_kadha_sudha_rasa_piyusham",
+      "gnb_rama_kadha",
+      "gnb_rama_katha",
+      "balasubramaniam_rama",
+      "balasubramaniam_rama_kadha",
+      "gnb_madhyamavathi",
+      "madhyamavathi_rama",
+      "thyagaraja_rama_kadha",
+      "thyagaraja_rama_katha",
+      "rāma_kathā",
+      "rama",
+      "kadha",
+      "katha",
+      "sudha",
+      "rasam",
+      "piyusham",
+      "pīyūṣam"
+    ]
+  },
+  {
+    "name": "Brochevarevarura",
+    "raga": "kamas",
+    "tala": "Adi",
+    "composer": "Mysore Vasudevacharya",
+    "melakartaNum": 28,
+    "parent": "harikambhoji",
+    "janya": true,
+    "aroha": "S R2 M1 P D2 S",
+    "avaroha": "S N2 D2 P M1 G3 R2 S",
+    "sahityam": {
+      "pallavi": "brōcēva revarurā ninu vina raghuvara nannu brōcuṭakunnavā rā",
+      "anupallavi": "sāmaja vara gamana sadbhakta citta kamala madhukara vimukha manda hasa",
+      "charanam1": "mūḍa mātya tyāgarāja vinuta nī pada dāsulaku parāku lēdura"
+    },
+    "aliases": [
+      "brochevarevarura",
+      "brocheva",
+      "brochevarevu",
+      "brochevarevarura_kamas",
+      "kamas_brocheva"
+    ]
+  },
+  {
+    "name": "Nagumomu",
+    "raga": "abhogi",
+    "tala": "Adi",
+    "composer": "Thyagaraja",
+    "melakartaNum": 22,
+    "parent": "kharaharapriya",
+    "janya": true,
+    "aroha": "S R2 G2 M1 D2 S",
+    "avaroha": "S D2 M1 G2 R2 S",
+    "sahityam": {
+      "pallavi": "nagumōmu ganalēnī nā jāli telisi nanu brōvaga rādā",
+      "anupallavi": "raghuvara nī samāna mevvarē śrī raghuvara nī samāna mevvarē",
+      "charanam1": "nā manasuna ninu nilpaga nēramēmi śrī raghuvara nī manasuna ninu nilpaga nēramēmi"
+    },
+    "aliases": [
+      "nagumomu",
+      "nagumomu_ganaleni",
+      "nagumomu_abhogi",
+      "abhogi_nagumomu",
+      "thyagaraja_nagumomu"
+    ]
+  },
+  {
+    "name": "Endaro_Mahanubhavulu",
+    "raga": "sri",
+    "tala": "Adi",
+    "composer": "Thyagaraja",
+    "melakartaNum": 22,
+    "parent": "kharaharapriya",
+    "janya": true,
+    "aroha": "S R2 M1 P N2 S",
+    "avaroha": "S N2 P M1 R2 S",
+    "sahityam": {
+      "pallavi": "ēndarō mahānubhāvulu andarīki vandanamulu",
+      "anupallavi": "canduru vardanulu nī andariki vandanamulu",
+      "charanam1": "sāmaja vara gamana sadbhakta citta kamala madhukara vimukha manda hasa"
+    },
+    "aliases": [
+      "endaro",
+      "endaro_mahanubhavulu",
+      "mahanubhavulu",
+      "sri_raga_endaro",
+      "thyagaraja_endaro"
     ]
   }
 ]

@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GoMaa Raga Vidya v4.0.2</title>
+  <title>GoMaa Raga Vidya v4.0.3</title>
   <script src="https://unpkg.com/opensheetmusicdisplay@0.9.5/build/opensheetmusicdisplay.min.js"></script>
   <style>
     :root {
       --primary: #2d6a4f; --primary-light: #40916c; --accent: #d8f3dc;
       --bg: #f8f9fa; --card: #ffffff; --text: #212529; --text-muted: #6c757d;
       --border: #dee2e6; --danger: #dc3545; --warning: #ffc107; --info: #0dcaf0;
+      --purple: #7c3aed;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
@@ -31,6 +32,8 @@
     .btn-secondary { background: var(--accent); color: var(--primary); }
     .btn-danger { background: var(--danger); color: white; }
     .btn-info { background: var(--info); color: #000; }
+    .btn-purple { background: var(--purple); color: white; }
+    .btn-orange { background: #f97316; color: white; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .tabs { display: flex; gap: 0.15rem; background: var(--card); padding: 0.4rem; border-radius: 12px 12px 0 0; border-bottom: 2px solid var(--border); overflow-x: auto; flex-wrap: wrap; }
     .tab-btn { padding: 0.6rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; border-radius: 8px; white-space: nowrap; transition: all 0.2s; font-size: 0.85rem; }
@@ -42,6 +45,16 @@
     .result-card { background: var(--bg); padding: 0.9rem; border-radius: 8px; border-left: 4px solid var(--primary-light); }
     .result-card h4 { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.2rem; }
     .result-card p { font-size: 1rem; font-weight: 700; color: var(--primary); }
+    .analysis-section { margin-bottom: 1.5rem; padding: 1rem; background: var(--bg); border-radius: 10px; }
+    .analysis-section h3 { font-size: 1rem; color: var(--primary); margin-bottom: 0.75rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.4rem; }
+    .point-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
+    .point-card { background: var(--card); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); }
+    .point-card h4 { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .point-card .value { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .point-card .meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .transcription-box { background: var(--card); padding: 1rem; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 0.75rem; }
+    .transcription-box h4 { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .transcription-box p { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; }
     .swara-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
     .swara-card { background: #fffbe6; border: 1px solid #ffe58f; border-radius: 10px; padding: 1rem; }
     .swara-card h3 { font-size: 0.8rem; text-transform: uppercase; color: #d48806; margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
@@ -75,18 +88,34 @@
     .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
     .badge-raga { background: var(--accent); color: var(--primary); }
     .badge-tala { background: #e7f3ff; color: #004085; }
+    .badge-janya { background: #fef3c7; color: #92400e; }
+    .badge-melakarta { background: #d1fae5; color: #065f46; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    /* Melakarta Wheel Styles */
+    .wheel-container { display: flex; justify-content: center; margin: 1.5rem 0; }
+    .melakarta-wheel { width: 600px; height: 600px; position: relative; }
+    .wheel-chakra { position: absolute; width: 100%; height: 100%; }
+    .wheel-chakra text { font-size: 9px; text-anchor: middle; dominant-baseline: middle; }
+    .wheel-chakra .chakra-label { font-size: 11px; font-weight: 700; fill: var(--primary); }
+    .wheel-chakra .raga-name { font-size: 8px; fill: var(--text); cursor: pointer; }
+    .wheel-chakra .raga-name:hover { fill: var(--primary); font-weight: 700; }
+    .wheel-legend { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; font-size: 0.8rem; }
+    .wheel-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .wheel-legend .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
     @media (max-width: 768px) {
       .container { padding: 0.75rem; }
       .upload-row, .two-col { flex-direction: column; grid-template-columns: 1fr; }
       .field-group { min-width: 100%; }
       .tabs { flex-wrap: nowrap; overflow-x: scroll; }
+      .melakarta-wheel { width: 350px; height: 350px; }
     }
     .badge-approved { background: #d1fae5; color: #065f46; }
     .badge-pending { background: #fef3c7; color: #92400e; }
     .approve-btn { padding: 0.3rem 0.7rem; font-size: 0.75rem; border-radius: 6px; border:  none; cursor: pointer; }
     .approve-btn:hover { opacity: 0.85; }
     .compose-audio-player { margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 10px; border: 1px solid #86efac; }
+    .search-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .search-bar input { flex: 1; min-width: 150px; }
   </style>
 </head>
 <body>
@@ -159,86 +188,109 @@
 
     <!-- COMPOSE PANEL -->
     <div id="compose-panel" class="tab-panel">
-  <h2 style="margin-bottom: 1rem;">✍️ Compose & Generate Audio</h2>
-  <div class="compose-form">
-    <div class="two-col">
-      <div class="field"><label>Title</label><input type="text" id="compose-title" placeholder="e.g., Mamava Sada Janani"></div>
-      <div class="field"><label>Composer</label><input type="text" id="compose-composer" placeholder="e.g., Swaati Tirunaal"></div>
-    </div>
-    <div class="two-col">
-      <div class="field">
-        <label>Raga <span class="hint">(or let system suggest from lyrics)</span></label>
-        <input type="text" id="compose-raga" list="raga-datalist" placeholder="Start typing raga name..." oninput="app.onRagaInput()">
-        <datalist id="raga-datalist"></datalist>
-      </div>
-      <div class="field"><label>Janya Of <span class="hint">(auto-filled)</span></label><input type="text" id="compose-parent" readonly placeholder="Parent melakarta"></div>
-    </div>
-    <div class="two-col">
-      <div class="field">
-        <label>Tala</label>
-        <select id="compose-tala"><option value="">Select Tala</option><option value="Adi">Adi</option><option value="Rupaka">Rupaka</option><option value="Misra Chapu">Misra Chapu</option><option value="Khanda Chapu">Khanda Chapu</option><option value="Dhruva">Dhruva</option><option value="Matya">Matya</option><option value="Jhampa">Jhampa</option><option value="Triputa">Triputa</option><option value="Ata">Ata</option><option value="Eka">Eka</option></select>
-      </div>
-      <div class="field">
-        <label>Instruments</label>
-        <select id="compose-instrument" multiple size="3" style="height:auto;">
-          <option value="Veena" selected>Veena</option><option value="Violin">Violin</option><option value="Flute" selected>Flute</option>
-          <option value="Nadaswaram">Nadaswaram</option><option value="Mridangam">Mridangam</option><option value="Ghatam">Ghatam</option><option value="Voice">Voice</option>
-        </select>
-      </div>
-    </div>
-    <div class="field"><label>Arohana <span class="hint">(auto-filled)</span></label><input type="text" id="compose-arohana" readonly></div>
-    <div class="field"><label>Avarohana <span class="hint">(auto-filled)</span></label><input type="text" id="compose-avarohana" readonly></div>
-    <div class="field"><label>Pallavi Lyrics</label><textarea id="compose-pallavi" placeholder="Enter pallavi sahityam... The system will suggest raga, janya, swaras, and generate sheet music + AI audio"></textarea></div>
-    <div class="field"><label>Anupallavi Lyrics</label><textarea id="compose-anupallavi" placeholder="Enter anupallavi..."></textarea></div>
-    <div class="field"><label>Charanam Lyrics</label><textarea id="compose-charanam" placeholder="Enter charanam..."></textarea></div>
-    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
-      <button class="btn btn-primary" onclick="app.analyzeCompose()">✨ Analyze & Compose</button>
-      <button class="btn btn-info" onclick="app.aiSuggest()">🎵 AI Suggest Swaras</button>
-      <button class="btn btn-purple" onclick="app.playComposeAudio()">▶ Play AI Audio</button>
-      <button class="btn btn-orange" onclick="app.downloadComposeSheets()">📥 Download Sheets</button>
-    </div>
-    <div id="compose-status"></div>
-    <div id="compose-result" style="display:none; margin-top:1rem;">
-      <div class="analysis-section"><h3>🎼 System Suggested Raga / Janya</h3>
-        <div class="point-grid">
-          <div class="point-card"><h4>Raga</h4><div class="value" id="comp-raga">—</div></div>
-          <div class="point-card"><h4>Janya Of</h4><div class="value" id="comp-janya">—</div></div>
-          <div class="point-card"><h4>Melakarta #</h4><div class="value" id="comp-melakarta">—</div></div>
+      <h2 style="margin-bottom: 1rem;">✍️ Compose & Generate Audio</h2>
+      <div class="compose-form">
+        <div class="two-col">
+          <div class="field"><label>Title</label><input type="text" id="compose-title" placeholder="e.g., Mamava Sada Janani"></div>
+          <div class="field"><label>Composer</label><input type="text" id="compose-composer" placeholder="e.g., Swaati Tirunaal"></div>
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label>Raga <span class="hint">(or let system suggest from lyrics)</span></label>
+            <input type="text" id="compose-raga" list="raga-datalist" placeholder="Start typing raga name..." oninput="app.onRagaInput()">
+            <datalist id="raga-datalist"></datalist>
+          </div>
+          <div class="field"><label>Janya Of <span class="hint">(auto-filled)</span></label><input type="text" id="compose-parent" readonly placeholder="Parent melakarta"></div>
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label>Tala</label>
+            <select id="compose-tala"><option value="">Select Tala</option><option value="Adi">Adi</option><option value="Rupaka">Rupaka</option><option value="Misra Chapu">Misra Chapu</option><option value="Khanda Chapu">Khanda Chapu</option><option value="Dhruva">Dhruva</option><option value="Matya">Matya</option><option value="Jhampa">Jhampa</option><option value="Triputa">Triputa</option><option value="Ata">Ata</option><option value="Eka">Eka</option></select>
+          </div>
+          <div class="field">
+            <label>Instruments</label>
+            <select id="compose-instrument" multiple size="3" style="height:auto;">
+              <option value="Veena" selected>Veena</option><option value="Violin">Violin</option><option value="Flute" selected>Flute</option>
+              <option value="Nadaswaram">Nadaswaram</option><option value="Mridangam">Mridangam</option><option value="Ghatam">Ghatam</option><option value="Voice">Voice</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Arohana <span class="hint">(auto-filled)</span></label><input type="text" id="compose-arohana" readonly></div>
+        <div class="field"><label>Avarohana <span class="hint">(auto-filled)</span></label><input type="text" id="compose-avarohana" readonly></div>
+        <div class="field"><label>Pallavi Lyrics</label><textarea id="compose-pallavi" placeholder="Enter pallavi sahityam... The system will suggest raga, janya, swaras, and generate sheet music + AI audio"></textarea></div>
+        <div class="field"><label>Anupallavi Lyrics</label><textarea id="compose-anupallavi" placeholder="Enter anupallavi..."></textarea></div>
+        <div class="field"><label>Charanam Lyrics</label><textarea id="compose-charanam" placeholder="Enter charanam..."></textarea></div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+          <button class="btn btn-primary" onclick="app.analyzeCompose()">✨ Analyze & Compose</button>
+          <button class="btn btn-info" onclick="app.aiSuggest()">🎵 AI Suggest Swaras</button>
+          <button class="btn btn-purple" onclick="app.playComposeAudio()">▶ Play AI Audio</button>
+          <button class="btn btn-orange" onclick="app.downloadComposeSheets()">📥 Download Sheets</button>
+        </div>
+        <div id="compose-status"></div>
+        <div id="compose-result" style="display:none; margin-top:1rem;">
+          <div class="analysis-section"><h3>🎼 System Suggested Raga / Janya</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Raga</h4><div class="value" id="comp-raga">—</div></div>
+              <div class="point-card"><h4>Janya Of</h4><div class="value" id="comp-janya">—</div></div>
+              <div class="point-card"><h4>Melakarta #</h4><div class="value" id="comp-melakarta">—</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>🎵 Generated Swaramu & Sahityamu</h3>
+            <div class="transcription-box"><h4>Swaras</h4><p id="comp-swaras">—</p></div>
+            <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Sahityam</h4><p id="comp-sahityam">—</p></div>
+          </div>
+          <div class="compose-audio-player">
+            <h4>🐦 Kokila Synthesis + 🏔️ Himalaya Ambience</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted);">Web Audio synthesizer playing your composition with pleasant veena/flute tones, nightingale ornaments, and mountain drone.</p>
+            <div id="compose-audio-controls" style="margin-top:0.5rem;"></div>
+          </div>
         </div>
       </div>
-      <div class="analysis-section"><h3>🎵 Generated Swaramu & Sahityamu</h3>
-        <div class="transcription-box"><h4>Swaras</h4><p id="comp-swaras">—</p></div>
-        <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Sahityam</h4><p id="comp-sahityam">—</p></div>
-      </div>
-      <div class="compose-audio-player">
-        <h4>🐦 Kokila Synthesis + 🏔️ Himalaya Ambience</h4>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Web Audio synthesizer playing your composition with pleasant veena/flute tones, nightingale ornaments, and mountain drone.</p>
-        <div id="compose-audio-controls" style="margin-top:0.5rem;"></div>
-      </div>
     </div>
-  </div>
-</div>
 
     <!-- SAVED PANEL -->
     <div id="saved-panel" class="tab-panel">
-     <h2 style="margin-bottom: 1rem;">💾 Saved Analyses & Compositions</h2>
-     <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-       <button class="btn btn-secondary" onclick="app.loadSavedList()">🔄 All</button>
-       <button class="btn btn-purple" onclick="app.loadApprovedList()">✅ Approved Only</button>
-     </div>
-     <div class="search-bar">
+      <h2 style="margin-bottom: 1rem;">💾 Saved Analyses & Compositions</h2>
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="app.loadSavedList()">🔄 All</button>
+        <button class="btn btn-purple" onclick="app.loadApprovedList()">✅ Approved Only</button>
+      </div>
+      <div class="search-bar">
         <input type="search" id="saved-search" placeholder="Search title, raga, composer, sahityam..." oninput="app.onSavedSearch()">
         <input type="text" id="saved-raga-filter" placeholder="Raga" style="max-width:120px">
         <input type="text" id="saved-janya-filter" placeholder="Janya of" style="max-width:120px">
         <input type="text" id="saved-composer-filter" placeholder="Composer" style="max-width:120px">
         <button class="btn btn-primary" onclick="app.searchSaved()">🔍 Search</button>
-     </div>
-     <div id="saved-list-container"><p style="color: var(--text-muted);">Loading saved items...</p></div>
+      </div>
+      <div id="saved-list-container"><p style="color: var(--text-muted);">Loading saved items...</p></div>
     </div>
 
     <!-- RAGA CHART PANEL -->
     <div id="ragachart-panel" class="tab-panel">
       <h2 style="margin-bottom: 1rem;">📋 Melakarta & Janya Reference</h2>
+
+      <!-- Melakarta Wheel -->
+      <div class="analysis-section">
+        <h3>🌀 72 Melakarta Chakra Wheel</h3>
+        <div class="wheel-container">
+          <svg class="melakarta-wheel" viewBox="0 0 600 600" id="melakarta-wheel"></svg>
+        </div>
+        <div class="wheel-legend">
+          <span><span class="dot" style="background:#e74c3c"></span> Indu (1–6)</span>
+          <span><span class="dot" style="background:#e67e22"></span> Netra (7–12)</span>
+          <span><span class="dot" style="background:#f1c40f"></span> Agni (13–18)</span>
+          <span><span class="dot" style="background:#2ecc71"></span> Veda (19–24)</span>
+          <span><span class="dot" style="background:#1abc9c"></span> Bana (25–30)</span>
+          <span><span class="dot" style="background:#3498db"></span> Ruthu (31–36)</span>
+          <span><span class="dot" style="background:#9b59b6"></span> Rishi (37–42)</span>
+          <span><span class="dot" style="background:#e91e63"></span> Vasu (43–48)</span>
+          <span><span class="dot" style="background:#ff5722"></span> Brahma (49–54)</span>
+          <span><span class="dot" style="background:#795548"></span> Disi (55–60)</span>
+          <span><span class="dot" style="background:#607d8b"></span> Rudra (61–66)</span>
+          <span><span class="dot" style="background:#3f51b5"></span> Aditya (67–72)</span>
+        </div>
+      </div>
+
       <div class="field-group" style="max-width: 400px; margin-bottom: 1rem;">
         <label>Search Raga</label>
         <input type="text" id="raga-search" placeholder="Type raga name..." oninput="app.filterRagaChart()">
@@ -296,101 +348,113 @@
       onFileSelected() { if (document.getElementById('audio-file').files[0]) document.getElementById('audio-url').value = ''; }
       onUrlInput() { if (document.getElementById('audio-url').value.trim()) document.getElementById('audio-file').value = ''; }
 
-      /* ── FormData for both files and URLs (multer parses both) ── */
       async analyze() {
-  const fileInput = document.getElementById('audio-file');
-  const urlInput = document.getElementById('audio-url');
-  const formData = new FormData();
-  const hasFile = fileInput.files.length > 0;
-  const hasUrl = urlInput.value.trim().length > 0;
-  if (!hasFile && !hasUrl) { this.setStatus('Please upload a file OR enter a URL.', 'error'); return; }
-  this.setStatus('Analyzing...', 'info');
-  try {
-    let response;
-    if (hasFile) {
-      formData.append('audio', fileInput.files[0]);
-      response = await fetch('/api/recognize', { method: 'POST', body: formData });
-    } else {
-      formData.append('url', urlInput.value.trim());
-      response = await fetch('/api/recognize', { method: 'POST', body: formData });
-    }
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    this.setStatus('Analysis complete!', 'success');
-    window.dispatchEvent(new CustomEvent('analysisComplete', { detail: data }));
-  } catch (err) { this.setStatus(err.message, 'error'); }
-}
+        const fileInput = document.getElementById('audio-file');
+        const urlInput = document.getElementById('audio-url');
+        const formData = new FormData();
+        const hasFile = fileInput.files.length > 0;
+        const hasUrl = urlInput.value.trim().length > 0;
+        if (!hasFile && !hasUrl) { this.setStatus('Please upload a file OR enter a URL.', 'error'); return; }
+        this.setStatus('Analyzing...', 'info');
+        try {
+          let response;
+          if (hasFile) {
+            formData.append('audio', fileInput.files[0]);
+            response = await fetch('/api/recognize', { method: 'POST', body: formData });
+          } else {
+            formData.append('url', urlInput.value.trim());
+            response = await fetch('/api/recognize', { method: 'POST', body: formData });
+          }
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          this.setStatus('Analysis complete!', 'success');
+          window.dispatchEvent(new CustomEvent('analysisComplete', { detail: data }));
+        } catch (err) { this.setStatus(err.message, 'error'); }
+      }
 
       toggleRecord() { document.getElementById('record-panel').classList.remove('hidden'); document.getElementById('record-btn').disabled = true; this.recorder.start(); }
       stopRecording() { this.recorder.stop(); document.getElementById('record-panel').classList.add('hidden'); document.getElementById('record-btn').disabled = false; }
-      renderResults(data) {
-  const panel = document.getElementById('results-panel');
-  const a = data.analysis || {};
-  const beat = a.beat || {}, tala = a.tala || {}, pitch = a.pitch || {};
-  const scale = a.scale || {}, ragaDet = a.ragaDetection || {};
-  const trans = a.transcription || {}, translit = a.transliteration || {};
-  const ragaName = data.raga || 'Unknown';
-  const parent = data.parentRaga || data.janyaOf || '';
-  const isJanya = data.janya || !!parent;
-  const melakartaNum = data.ragaNumber || 0;
 
-  panel.innerHTML = `
-    <div class="result-grid">
-      <div class="result-card"><h4>Raga</h4><p>${ragaName}</p></div>
-      <div class="result-card"><h4>${isJanya ? 'Janya of' : 'Melakarta'}</h4><p>${parent || (melakartaNum ? 'No. ' + melakartaNum : '—')}</p></div>
-      <div class="result-card"><h4>Tala</h4><p>${data.tala || 'Unknown'}</p></div>
-      <div class="result-card"><h4>Composer</h4><p>${data.composer || 'Unknown'}</p></div>
-      <div class="result-card"><h4>Duration</h4><p>${data.duration ? data.duration.toFixed(1) + 's' : '—'}</p></div>
-      <div class="result-card"><h4>Tempo</h4><p>${data.tempo ? data.tempo.toFixed(0) + ' BPM' : '—'}</p></div>
-    </div>
-    <div class="analysis-section"><h3>🥁 1. Beat Detection</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>BPM</h4><div class="value">${beat.bpm?.toFixed(1) || '—'}</div><div class="meta">Confidence: ${(beat.confidence * 100).toFixed(0)}%</div></div>
-        <div class="point-card"><h4>Beat Count</h4><div class="value">${beat.beatCount || '—'}</div></div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>📿 2. Taalam Detection</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Tala</h4><div class="value">${tala.name || 'Unknown'}</div><div class="meta">Confidence: ${(tala.confidence * 100).toFixed(0)}%</div></div>
-        <div class="point-card"><h4>Sections</h4><div class="value">${tala.sections?.join(' + ') || '—'}</div></div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>🎙 3. Pitch Detection (YIN)</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Tonic / Shruti</h4><div class="value">${pitch.tonic?.toFixed(1) || '—'} Hz</div></div>
-        <div class="point-card"><h4>Detected Swaras</h4><div class="value">${pitch.detectedSwaras?.join(' ') || '—'}</div></div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>🎹 4. Scale Detection (Bayesian Chroma)</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Notes</h4><div class="value">${scale.noteNames?.join(' ') || '—'}</div><div class="meta">Confidence: ${(scale.confidence * 100).toFixed(0)}%</div></div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>↗️ 7. Aarohana &nbsp; ↘️ 8. Avarohana</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Aarohana</h4><div class="value">${data.aroha || '—'}</div></div>
-        <div class="point-card"><h4>Avarohana</h4><div class="value">${data.avaroha || '—'}</div></div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>🕉 9. Raga / Janya Detection</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Detected Raga</h4><div class="value">${ragaDet.raga || 'Unknown'}</div><div class="meta">Confidence: ${(ragaDet.confidence * 100).toFixed(0)}%</div></div>
-        <div class="point-card"><h4>Parent Melakarta</h4><div class="value">${ragaDet.parentRaga || '—'}</div>${ragaDet.janya ? '<div class="meta"><span class="badge badge-janya">Janya</span></div>' : '<div class="meta"><span class="badge badge-melakarta">Melakarta</span></div>'}</div>
-      </div>
-    </div>
-    <div class="analysis-section"><h3>📝 5. Transcription (Whisper)</h3>
-      <div class="transcription-box"><h4>${trans.language || 'Auto'} ${trans.garbage ? '<span style="color:var(--danger)">[Possible Hallucination]</span>' : ''}</h4><p>${trans.text || 'No transcription available.'}</p></div>
-    </div>
-    <div class="analysis-section"><h3>🔤 6. Transliteration (Telugu)</h3>
-      <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Script</h4><p>${translit.telugu || '—'}</p></div>
-    </div>
-    <div class="analysis-section"><h3>🎼 10. Swara / Sahityam / Sheet Music</h3>
-      <div class="point-grid">
-        <div class="point-card"><h4>Generated Swaras</h4><div class="value">${a.swaras?.swaras?.join(' ') || '—'}</div></div>
-        <div class="point-card"><h4>Pattern</h4><div class="value">${a.swaras?.pattern || '—'}</div></div>
-      </div>
-    </div>`;
-}
+      renderResults(data) {
+        const panel = document.getElementById('results-panel');
+        const a = data.analysis || {};
+        const beat = a.beat || {}, tala = a.tala || {}, pitch = a.pitch || {};
+        const scale = a.scale || {}, ragaDet = a.ragaDetection || {};
+        const trans = a.transcription || {}, translit = a.transliteration || {};
+        const ragaName = data.raga || 'Unknown';
+        const parent = data.parentRaga || data.janyaOf || '';
+        const isJanya = data.janya || !!parent;
+        const melakartaNum = data.ragaNumber || 0;
+
+        // Fix: format sections properly (objects with .label)
+        const sectionsStr = Array.isArray(tala.sections)
+          ? tala.sections.map(s => typeof s === 'object' ? s.label || s.type : s).join(' + ')
+          : '—';
+
+        // Fix: safe confidence formatting
+        const fmtConf = (v) => {
+          const n = parseFloat(v);
+          return isNaN(n) ? '—' : (n * 100).toFixed(0) + '%';
+        };
+
+        panel.innerHTML = `
+          <div class="result-grid">
+            <div class="result-card"><h4>Raga</h4><p>${ragaName}</p></div>
+            <div class="result-card"><h4>${isJanya ? 'Janya of' : 'Melakarta'}</h4><p>${parent || (melakartaNum ? 'No. ' + melakartaNum : '—')}</p></div>
+            <div class="result-card"><h4>Tala</h4><p>${data.tala || 'Unknown'}</p></div>
+            <div class="result-card"><h4>Composer</h4><p>${data.composer || 'Unknown'}</p></div>
+            <div class="result-card"><h4>Duration</h4><p>${data.duration ? data.duration.toFixed(1) + 's' : '—'}</p></div>
+            <div class="result-card"><h4>Tempo</h4><p>${data.tempo ? data.tempo.toFixed(0) + ' BPM' : '—'}</p></div>
+          </div>
+          <div class="analysis-section"><h3>🥁 1. Beat Detection</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>BPM</h4><div class="value">${beat.bpm?.toFixed(1) || '—'}</div><div class="meta">Confidence: ${fmtConf(beat.confidence)}</div></div>
+              <div class="point-card"><h4>Beat Count</h4><div class="value">${beat.beatCount || '—'}</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>📿 2. Taalam Detection</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Tala</h4><div class="value">${tala.name || 'Unknown'}</div><div class="meta">Confidence: ${fmtConf(tala.confidence)}</div></div>
+              <div class="point-card"><h4>Sections</h4><div class="value">${sectionsStr}</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>🎙 3. Pitch Detection (YIN)</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Tonic / Shruti</h4><div class="value">${pitch.tonic?.toFixed(1) || '—'} Hz</div></div>
+              <div class="point-card"><h4>Detected Swaras</h4><div class="value">${pitch.detectedSwaras?.join(' ') || '—'}</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>🎹 4. Scale Detection (Bayesian Chroma)</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Notes</h4><div class="value">${scale.noteNames?.join(' ') || '—'}</div><div class="meta">Confidence: ${fmtConf(scale.confidence)}</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>↗️ 7. Aarohana &nbsp; ↘️ 8. Avarohana</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Aarohana</h4><div class="value">${data.aroha || '—'}</div></div>
+              <div class="point-card"><h4>Avarohana</h4><div class="value">${data.avaroha || '—'}</div></div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>🕉 9. Raga / Janya Detection</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Detected Raga</h4><div class="value">${ragaDet.raga || 'Unknown'}</div><div class="meta">Confidence: ${fmtConf(ragaDet.confidence)}</div></div>
+              <div class="point-card"><h4>Parent Melakarta</h4><div class="value">${ragaDet.parentRaga || '—'}</div>${ragaDet.janya ? '<div class="meta"><span class="badge badge-janya">Janya</span></div>' : '<div class="meta"><span class="badge badge-melakarta">Melakarta</span></div>'}</div>
+            </div>
+          </div>
+          <div class="analysis-section"><h3>📝 5. Transcription (Whisper)</h3>
+            <div class="transcription-box"><h4>${trans.language || 'Auto'} ${trans.garbage ? '<span style="color:var(--danger)">[Possible Hallucination]</span>' : ''} ${trans.skipped ? '<span style="color:var(--info)">[Skipped]</span>' : ''}</h4><p>${trans.text || 'No transcription available.'}</p></div>
+          </div>
+          <div class="analysis-section"><h3>🔤 6. Transliteration (Telugu)</h3>
+            <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Script</h4><p>${translit.telugu || '—'}</p></div>
+          </div>
+          <div class="analysis-section"><h3>🎼 10. Swara / Sahityam / Sheet Music</h3>
+            <div class="point-grid">
+              <div class="point-card"><h4>Generated Swaras</h4><div class="value">${a.swaras?.swaras?.join(' ') || '—'}</div></div>
+              <div class="point-card"><h4>Pattern</h4><div class="value">${a.swaras?.pattern ? (a.swaras.pattern.length > 60 ? a.swaras.pattern.substring(0, 60) + '...' : a.swaras.pattern) : '—'}</div></div>
+            </div>
+          </div>`;
+      }
+
       renderSwaras(data) {
         const panel = document.getElementById('swaras-panel');
         const segments = data.segments || [];
@@ -422,57 +486,140 @@
         if (audioUrl) document.getElementById('audio-player').src = audioUrl;
       }
       playScore() { const audio = document.getElementById('audio-player'); if (!audio.src || !this.scoreRenderer) return; this.scoreRenderer.playWithAudio(audio.src); }
+
       async loadRagaChart() {
-        try { const res = await fetch('/api/ragas'); this.ragas = await res.json(); this.populateRagaDatalist(); this.renderRagaChart(this.ragas); }
+        try { 
+          const res = await fetch('/api/ragas'); 
+          this.ragas = await res.json(); 
+          this.populateRagaDatalist(); 
+          this.renderRagaChart(this.ragas);
+          this.renderMelakartaWheel(this.ragas);
+        }
         catch (e) { console.error('Failed to load raga chart', e); }
       }
-      populateRagaDatalist() { document.getElementById('raga-datalist').innerHTML = this.ragas.map(r => `<option value="${r.name}">${r.name} (${r.parent || 'Melakarta ' + r.melakarta})</option>`).join(''); }
-      renderRagaChart(ragas) { document.getElementById('raga-chart-body').innerHTML = ragas.map(r => `
-        <tr><td>${r.melakarta || '—'}</td><td class="melakarta">${r.name}</td>
-        <td style="font-family:monospace; font-size:0.8rem;">${r.arohana?.join(' ') || '—'}</td>
-        <td style="font-family:monospace; font-size:0.8rem;">${r.avarohana?.join(' ') || '—'}</td>
-        <td class="janya">${r.janyas?.join(', ') || '—'}</td></tr>`).join(''); }
-      filterRagaChart() { const q = document.getElementById('raga-search').value.toLowerCase(); this.renderRagaChart(this.ragas.filter(r => r.name.toLowerCase().includes(q) || (r.janyas && r.janyas.some(j => j.toLowerCase().includes(q))))); }
+
+      // ── Melakarta Wheel Renderer ──
+      renderMelakartaWheel(ragas) {
+        const svg = document.getElementById('melakarta-wheel');
+        if (!svg) return;
+        const melakartas = ragas.filter(r => !r.parent && r.melakarta >= 1 && r.melakarta <= 72).sort((a, b) => a.melakarta - b.melakarta);
+        if (melakartas.length < 72) {
+          svg.innerHTML = '<text x="300" y="300" text-anchor="middle" fill="#666" font-size="14">Loading melakarta data...</text>';
+          return;
+        }
+
+        const cx = 300, cy = 300, maxR = 280;
+        const chakraColors = [
+          '#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db',
+          '#9b59b6','#e91e63','#ff5722','#795548','#607d8b','#3f51b5'
+        ];
+        const chakraNames = [
+          'Indu','Netra','Agni','Veda','Bana','Ruthu',
+          'Rishi','Vasu','Brahma','Disi','Rudra','Aditya'
+        ];
+
+        let html = '';
+        // Background circles for chakras
+        for (let c = 0; c < 12; c++) {
+          const rInner = 30 + c * (maxR - 30) / 12;
+          const rOuter = 30 + (c + 1) * (maxR - 30) / 12;
+          html += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="${chakraColors[c]}" stroke-width="1.5" opacity="0.3"/>`;
+        }
+
+        // Place each melakarta
+        for (let i = 0; i < 72; i++) {
+          const raga = melakartas[i];
+          if (!raga) continue;
+          const chakra = Math.floor(i / 6); // 0–11
+          const posInChakra = i % 6; // 0–5
+          const angle = (chakra * 30 + posInChakra * 5 - 90) * Math.PI / 180;
+          const r = 30 + (chakra + 0.5) * (maxR - 30) / 12;
+          const x = cx + r * Math.cos(angle);
+          const y = cy + r * Math.sin(angle);
+          html += `<circle cx="${x}" cy="${y}" r="8" fill="${chakraColors[chakra]}" stroke="white" stroke-width="1"/>`;
+          html += `<text x="${x}" y="${y + 3}" class="raga-name" data-raga="${raga.name}">${raga.melakarta}</text>`;
+        }
+
+        // Chakra labels
+        for (let c = 0; c < 12; c++) {
+          const angle = (c * 30 + 15 - 90) * Math.PI / 180;
+          const r = maxR + 15;
+          const x = cx + r * Math.cos(angle);
+          const y = cy + r * Math.sin(angle);
+          html += `<text x="${x}" y="${y}" class="chakra-label">${chakraNames[c]}</text>`;
+        }
+
+        // Center
+        html += `<circle cx="${cx}" cy="${cy}" r="25" fill="var(--primary)"/>`;
+        html += `<text x="${cx}" y="${cy + 4}" fill="white" font-size="12" font-weight="700" text-anchor="middle">72</text>`;
+        html += `<text x="${cx}" y="${cy + 16}" fill="white" font-size="8" text-anchor="middle">Melakartas</text>`;
+
+        svg.innerHTML = html;
+      }
+
+      populateRagaDatalist() { 
+        document.getElementById('raga-datalist').innerHTML = this.ragas.map(r => `<option value="${r.name}">${r.name} (${r.parent || 'Melakarta ' + r.melakarta})</option>`).join(''); 
+      }
+      renderRagaChart(ragas) { 
+        document.getElementById('raga-chart-body').innerHTML = ragas.map(r => `
+          <tr><td>${r.melakarta || '—'}</td><td class="melakarta">${r.name}</td>
+          <td style="font-family:monospace; font-size:0.8rem;">${r.arohana?.join(' ') || '—'}</td>
+          <td style="font-family:monospace; font-size:0.8rem;">${r.avarohana?.join(' ') || '—'}</td>
+          <td class="janya">${r.janyas?.join(', ') || '—'}</td></tr>`).join(''); 
+      }
+      filterRagaChart() { 
+        const q = document.getElementById('raga-search').value.toLowerCase(); 
+        this.renderRagaChart(this.ragas.filter(r => r.name.toLowerCase().includes(q) || (r.janyas && r.janyas.some(j => j.toLowerCase().includes(q))))); 
+      }
       onRagaInput() {
         const raga = this.ragas.find(r => r.name.toLowerCase() === document.getElementById('compose-raga').value.toLowerCase());
-        if (raga) { document.getElementById('compose-parent').value = raga.parent || `Melakarta ${raga.melakarta}`; document.getElementById('compose-arohana').value = raga.arohana?.join(' ') || ''; document.getElementById('compose-avarohana').value = raga.avarohana?.join(' ') || ''; }
+        if (raga) { 
+          document.getElementById('compose-parent').value = raga.parent || `Melakarta ${raga.melakarta}`; 
+          document.getElementById('compose-arohana').value = raga.arohana?.join(' ') || ''; 
+          document.getElementById('compose-avarohana').value = raga.avarohana?.join(' ') || ''; 
+        }
       }
-async searchSaved() {
-  const q = document.getElementById('saved-search').value.trim();
-  const raga = document.getElementById('saved-raga-filter').value.trim();
-  const janya = document.getElementById('saved-janya-filter').value.trim();
-  const composer = document.getElementById('saved-composer-filter').value.trim();
-  const container = document.getElementById('saved-list-container');
-  container.innerHTML = '<p style="color: var(--text-muted);">Searching...</p>';
-  try {
-    const params = new URLSearchParams();
-    if (q) params.append('q', q);
-    if (raga) params.append('raga', raga);
-    if (janya) params.append('janya', janya);
-    if (composer) params.append('composer', composer);
-    params.append('limit', '40');
-    const res = await fetch('/api/search?' + params.toString());
-    const data = await res.json();
-    this.renderSavedItems(data.results || [], container);
-  } catch (e) { container.innerHTML = '<p style="color: var(--text-muted);">Search failed.</p>'; }
-}
-onSavedSearch() { clearTimeout(this._searchDebounce); this._searchDebounce = setTimeout(() => this.searchSaved(), 400); }
-renderSavedItems(items, container) {
-  if (!items || items.length === 0) { container.innerHTML = '<p style="color: var(--text-muted);">No saved analyses yet.</p>'; return; }
-  container.innerHTML = '<div class="saved-list">' + items.map(item => `
-    <div class="saved-card">
-      <h4>${item.title || 'Untitled'}</h4>
-      <div style="display:flex; gap:0.5rem; margin:0.25rem 0; flex-wrap:wrap;">
-        <span class="badge badge-raga">${item.raga || '?'}</span>
-        ${item.janyaOf ? `<span class="badge badge-janya">J: ${item.janyaOf}</span>` : ''}
-        <span class="badge badge-tala">${item.tala || '?'}</span>
-        ${item.ragaNumber ? `<span class="badge badge-melakarta">M${item.ragaNumber}</span>` : ''}
-      </div>
-      <small>${item.composer || item.artist || 'Unknown'} • ${item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}</small>
-      ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
-      <div style="margin-top:0.5rem;"><button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button></div>
-    </div>`).join('') + '</div>';
-}
+
+      async searchSaved() {
+        const q = document.getElementById('saved-search').value.trim();
+        const raga = document.getElementById('saved-raga-filter').value.trim();
+        const janya = document.getElementById('saved-janya-filter').value.trim();
+        const composer = document.getElementById('saved-composer-filter').value.trim();
+        const container = document.getElementById('saved-list-container');
+        container.innerHTML = '<p style="color: var(--text-muted);">Searching...</p>';
+        try {
+          const params = new URLSearchParams();
+          if (q) params.append('q', q);
+          if (raga) params.append('raga', raga);
+          if (janya) params.append('janya', janya);
+          if (composer) params.append('composer', composer);
+          params.append('limit', '40');
+          const res = await fetch('/api/search?' + params.toString());
+          const data = await res.json();
+          this.renderSavedItems(data.results || [], container);
+        } catch (e) { container.innerHTML = '<p style="color: var(--text-muted);">Search failed.</p>'; }
+      }
+      onSavedSearch() { clearTimeout(this._searchDebounce); this._searchDebounce = setTimeout(() => this.searchSaved(), 400); }
+      renderSavedItems(items, container, isApprovedView = false) {
+        if (!items || items.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);">No items found.</p>'; return; }
+        container.innerHTML = '<div class="saved-list">' + items.map(item => `
+          <div class="saved-card">
+            <h4>${item.title || 'Untitled'}</h4>
+            <div style="display:flex; gap:0.5rem; margin:0.25rem 0; flex-wrap:wrap;">
+              <span class="badge badge-raga">${item.raga || '?'}</span>
+              ${item.janyaOf ? `<span class="badge badge-janya">J: ${item.janyaOf}</span>` : ''}
+              <span class="badge badge-tala">${item.tala || '?'}</span>
+              ${item.ragaNumber ? `<span class="badge badge-melakarta">M${item.ragaNumber}</span>` : ''}
+              ${item.approved ? '<span class="badge badge-approved">✓ Approved</span>' : '<span class="badge badge-pending">Pending</span>'}
+            </div>
+            <small>${item.composer || item.artist || 'Unknown'} • ${item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}</small>
+            ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
+            <div style="margin-top:0.5rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
+              <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button>
+              ${!item.approved ? `<button class="approve-btn btn-primary" style="background:var(--primary); color:white;" onclick="app.approveItem('${item.id}')">✓ Approve</button>` : ''}
+            </div>
+          </div>`).join('') + '</div>';
+      }
       async saveComposition() {
         const payload = { id: `compose_${Date.now()}`, title: document.getElementById('compose-title').value, composer: document.getElementById('compose-composer').value, raga: document.getElementById('compose-raga').value, parent: document.getElementById('compose-parent').value, tala: document.getElementById('compose-tala').value, instrument: document.getElementById('compose-instrument').value, arohana: document.getElementById('compose-arohana').value, avarohana: document.getElementById('compose-avarohana').value, sahityam: { pallavi: document.getElementById('compose-pallavi').value, anupallavi: document.getElementById('compose-anupallavi').value, charanam1: document.getElementById('compose-charanam').value }, source: 'user_compose' };
         try { const res = await fetch('/api/compositions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (res.ok) { document.getElementById('compose-status').textContent = '✅ Saved!'; await fetch('/api/compositions/reload', { method: 'POST' }); } else throw new Error('Save failed'); }
@@ -484,122 +631,88 @@ renderSavedItems(items, container) {
         document.getElementById('compose-pallavi').value = `[Suggested Pallavi in ${raga.name}]\nArohana: ${raga.arohana?.join(' ') || ''}\nAvarohana: ${raga.avarohana?.join(' ') || ''}\n\nStart with: S , - S R2 G2 | M1 G2 R2 S | N2 , - D2 P | ...`;
         document.getElementById('compose-status').textContent = '✨ Suggested swara skeleton pasted';
       }
-// ── Approval ──
-async approveItem(id) {
-  try {
-    const res = await fetch(`/api/approve/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: 'user' }) });
-    const data = await res.json();
-    if (data.success) { this.setStatus('✅ Approved and added to trained model', 'success'); this.loadSavedList(); }
-    else throw new Error(data.error);
-  } catch (err) { this.setStatus('Approve failed: ' + err.message, 'error'); }
-}
-
-async loadApprovedList() {
-  const container = document.getElementById('saved-list-container');
-  try {
-    const res = await fetch('/api/saved?approved=1');
-    const items = await res.json();
-    this.renderSavedItems(items, container, true);
-  } catch (e) { container.innerHTML = '<p style="color:var(--text-muted);">Could not load approved items.</p>'; }
-}
-
-// ── Compose Audio Engine ──
-async analyzeCompose() {
-  const payload = {
-    title: document.getElementById('compose-title').value,
-    composer: document.getElementById('compose-composer').value,
-    lyrics: {
-      pallavi: document.getElementById('compose-pallavi').value,
-      anupallavi: document.getElementById('compose-anupallavi').value,
-      charanam1: document.getElementById('compose-charanam').value
-    },
-    preferredRaga: document.getElementById('compose-raga').value,
-    preferredTala: document.getElementById('compose-tala').value,
-    instruments: Array.from(document.getElementById('compose-instrument').selectedOptions).map(o => o.value)
-  };
-  document.getElementById('compose-status').textContent = 'Composing...';
-  try {
-    const res = await fetch('/api/compose/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    this.currentComposition = data;
-    document.getElementById('compose-result').style.display = 'block';
-    document.getElementById('comp-raga').textContent = data.suggestedRaga;
-    document.getElementById('comp-janya').textContent = data.suggestedJanyaOf || 'Melakarta';
-    document.getElementById('comp-melakarta').textContent = data.melakartaNum || '—';
-    document.getElementById('comp-swaras').textContent = (data.swaras?.swaras || []).join(' ');
-    document.getElementById('comp-sahityam').textContent = data.sahityam?.telugu || data.sahityam?.pallavi || '—';
-    document.getElementById('compose-status').textContent = '✅ Composition generated!';
-    // Auto-fill raga fields
-    document.getElementById('compose-raga').value = data.suggestedRaga;
-    document.getElementById('compose-parent').value = data.suggestedJanyaOf || `Melakarta ${data.melakartaNum}`;
-    document.getElementById('compose-arohana').value = data.aroha;
-    document.getElementById('compose-avarohana').value = data.avarohana;
-  } catch (err) { document.getElementById('compose-status').textContent = '❌ ' + err.message; }
-}
-
-playComposeAudio() {
-  if (!this.currentComposition?.audioJson) { alert('Generate a composition first'); return; }
-  if (this.composeSynth) this.composeSynth.stop();
-  this.composeSynth = new ComposeAudioEngine();
-  this.composeSynth.play(this.currentComposition.audioJson);
-}
-
-downloadComposeSheets() {
-  if (!this.currentComposition) { alert('Generate a composition first'); return; }
-  // Download carnatic sheet
-  const carnaticBlob = new Blob([this.currentComposition.carnaticSheet || ''], { type: 'application/xml' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(carnaticBlob); a.download = `carnatic_${this.currentComposition.suggestedRaga}.xml`; a.click();
-  // Download western sheet
-  const westernBlob = new Blob([this.currentComposition.westernSheet || ''], { type: 'application/xml' });
-  const b = document.createElement('a'); b.href = URL.createObjectURL(westernBlob); b.download = `western_${this.currentComposition.suggestedRaga}.xml`; b.click();
-  // Download MIDI
-  if (this.currentComposition.midiData) {
-    const mBlob = new Blob([Buffer.from(this.currentComposition.midiData, 'base64')], { type: 'audio/midi' });
-    const c = document.createElement('a'); c.href = URL.createObjectURL(mBlob); c.download = `${this.currentComposition.suggestedRaga}.mid`; c.click();
-  }
-}
-
-// Update renderSavedItems to show approve button
-renderSavedItems(items, container, isApprovedView = false) {
-  if (!items || items.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);">No items found.</p>'; return; }
-  container.innerHTML = '<div class="saved-list">' + items.map(item => `
-    <div class="saved-card">
-      <h4>${item.title || 'Untitled'}</h4>
-      <div style="display:flex; gap:0.5rem; margin:0.25rem 0; flex-wrap:wrap;">
-        <span class="badge badge-raga">${item.raga || '?'}</span>
-        ${item.janyaOf ? `<span class="badge badge-janya">J: ${item.janyaOf}</span>` : ''}
-        <span class="badge badge-tala">${item.tala || '?'}</span>
-        ${item.ragaNumber ? `<span class="badge badge-melakarta">M${item.ragaNumber}</span>` : ''}
-        ${item.approved ? '<span class="badge badge-approved">✓ Approved</span>' : '<span class="badge badge-pending">Pending</span>'}
-      </div>
-      <small>${item.composer || item.artist || 'Unknown'} • ${item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}</small>
-      ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
-      <div style="margin-top:0.5rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
-        <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button>
-        ${!item.approved ? `<button class="approve-btn btn-primary" style="background:var(--primary); color:white;" onclick="app.approveItem('${item.id}')">✓ Approve</button>` : ''}
-      </div>
-    </div>`).join('') + '</div>';
-}
+      async approveItem(id) {
+        try {
+          const res = await fetch(`/api/approve/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: 'user' }) });
+          const data = await res.json();
+          if (data.success) { this.setStatus('✅ Approved and added to trained model', 'success'); this.loadSavedList(); }
+          else throw new Error(data.error);
+        } catch (err) { this.setStatus('Approve failed: ' + err.message, 'error'); }
+      }
+      async loadApprovedList() {
+        const container = document.getElementById('saved-list-container');
+        try {
+          const res = await fetch('/api/saved?approved=1');
+          const items = await res.json();
+          this.renderSavedItems(items, container, true);
+        } catch (e) { container.innerHTML = '<p style="color:var(--text-muted);">Could not load approved items.</p>'; }
+      }
+      async analyzeCompose() {
+        const payload = {
+          title: document.getElementById('compose-title').value,
+          composer: document.getElementById('compose-composer').value,
+          lyrics: {
+            pallavi: document.getElementById('compose-pallavi').value,
+            anupallavi: document.getElementById('compose-anupallavi').value,
+            charanam1: document.getElementById('compose-charanam').value
+          },
+          preferredRaga: document.getElementById('compose-raga').value,
+          preferredTala: document.getElementById('compose-tala').value,
+          instruments: Array.from(document.getElementById('compose-instrument').selectedOptions).map(o => o.value)
+        };
+        document.getElementById('compose-status').textContent = 'Composing...';
+        try {
+          const res = await fetch('/api/compose/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          this.currentComposition = data;
+          document.getElementById('compose-result').style.display = 'block';
+          document.getElementById('comp-raga').textContent = data.suggestedRaga;
+          document.getElementById('comp-janya').textContent = data.suggestedJanyaOf || 'Melakarta';
+          document.getElementById('comp-melakarta').textContent = data.melakartaNum || '—';
+          document.getElementById('comp-swaras').textContent = (data.swaras?.swaras || []).join(' ');
+          document.getElementById('comp-sahityam').textContent = data.sahityam?.telugu || data.sahityam?.pallavi || '—';
+          document.getElementById('compose-status').textContent = '✅ Composition generated!';
+          document.getElementById('compose-raga').value = data.suggestedRaga;
+          document.getElementById('compose-parent').value = data.suggestedJanyaOf || `Melakarta ${data.melakartaNum}`;
+          document.getElementById('compose-arohana').value = data.aroha;
+          document.getElementById('compose-avarohana').value = data.avaroha;
+        } catch (err) { document.getElementById('compose-status').textContent = '❌ ' + err.message; }
+      }
+      playComposeAudio() {
+        if (!this.currentComposition?.audioJson) { alert('Generate a composition first'); return; }
+        if (this.composeSynth) this.composeSynth.stop();
+        this.composeSynth = new ComposeAudioEngine();
+        this.composeSynth.play(this.currentComposition.audioJson);
+      }
+      downloadComposeSheets() {
+        if (!this.currentComposition) { alert('Generate a composition first'); return; }
+        const carnaticBlob = new Blob([this.currentComposition.carnaticSheet || ''], { type: 'application/xml' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(carnaticBlob); a.download = `carnatic_${this.currentComposition.suggestedRaga}.xml`; a.click();
+        const westernBlob = new Blob([this.currentComposition.westernSheet || ''], { type: 'application/xml' });
+        const b = document.createElement('a'); b.href = URL.createObjectURL(westernBlob); b.download = `western_${this.currentComposition.suggestedRaga}.xml`; b.click();
+        if (this.currentComposition.midiData) {
+          const mBlob = new Blob([Buffer.from(this.currentComposition.midiData, 'base64')], { type: 'audio/midi' });
+          const c = document.createElement('a'); c.href = URL.createObjectURL(mBlob); c.download = `${this.currentComposition.suggestedRaga}.mid`; c.click();
+        }
+      }
       async loadSavedList() {
         const container = document.getElementById('saved-list-container');
-        try { const res = await fetch('/api/saved'); const items = await res.json(); if (items.length === 0) { container.innerHTML = '<p style="color: var(--text-muted);">No saved analyses yet.</p>'; return; }
-          container.innerHTML = '<div class="saved-list">' + items.map(item => `
-            <div class="saved-card">
-              <h4>${item.title || 'Untitled'}</h4>
-              <div style="display:flex; gap:0.5rem; margin:0.25rem 0;"><span class="badge badge-raga">${item.raga || '?'}</span><span class="badge badge-tala">${item.tala || '?'}</span></div>
-              <small>${item.composer || 'Unknown'} • ${new Date(item.created_at).toLocaleDateString()}</small>
-              ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
-              <div style="margin-top:0.5rem;"><button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button></div>
-            </div>`).join('') + '</div>';
+        try { 
+          const res = await fetch('/api/saved'); 
+          const items = await res.json(); 
+          if (items.length === 0) { container.innerHTML = '<p style="color: var(--text-muted);">No saved analyses yet.</p>'; return; }
+          this.renderSavedItems(items, container);
         } catch (e) { container.innerHTML = '<p style="color: var(--text-muted);">Could not load saved items.</p>'; }
       }
       loadSavedItem(item) { window.dispatchEvent(new CustomEvent('analysisComplete', { detail: item })); this.switchTab('results'); }
     }
+
     class LiveRecorder {
       constructor() { this.mediaRecorder = null; this.chunks = []; this.stream = null; this.timerInterval = null; }
       async start() {
-        try { this.stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 44100, channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        try { 
+          this.stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 44100, channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
           const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
           this.mediaRecorder = new MediaRecorder(this.stream, { mimeType }); this.chunks = [];
           this.mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) this.chunks.push(e.data); };
@@ -611,6 +724,7 @@ renderSavedItems(items, container, isApprovedView = false) {
       startTimer() { let seconds = 0; const timerEl = document.getElementById('record-timer'); this.timerInterval = setInterval(() => { seconds++; const mins = Math.floor(seconds / 60).toString().padStart(2, '0'); const secs = (seconds % 60).toString().padStart(2, '0'); if (timerEl) timerEl.textContent = `${mins}:${secs}`; }, 1000); }
       async uploadRecording(blob) { const formData = new FormData(); formData.append('audio', blob, 'live_recording.webm'); app.setStatus('Analyzing live recording...', 'info'); try { const res = await fetch('/api/recognize', { method: 'POST', body: formData }); const data = await res.json(); if (data.error) throw new Error(data.error); app.setStatus('Live recording analysis complete!', 'success'); window.dispatchEvent(new CustomEvent('analysisComplete', { detail: data })); } catch (err) { app.setStatus(err.message, 'error'); } }
     }
+
     class ScoreRenderer {
       constructor(containerId) { this.container = document.getElementById(containerId); this.osmd = null; this.audio = null; this.isPlaying = false; this.rafId = null; this.currentCursorIndex = -1; this.timingMap = []; }
       async init(xmlContent) { await this.ensureVisible(); this.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(this.container, { autoResize: true, backend: 'svg', drawTitle: true, drawComposer: true, drawLyrics: true, drawingParameters: 'default', pageFormat: 'Endless' }); await this.osmd.load(xmlContent); await this.osmd.render(); this.osmd.cursor.show(); this.osmd.cursor.hide(); this.buildTimingMap(); }
@@ -621,91 +735,86 @@ renderSavedItems(items, container, isApprovedView = false) {
       scrollToCursor() { const el = this.container.querySelector('.cursor'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
       async onTabShown() { if (this.osmd && this.container.offsetParent !== null) { await this.osmd.render(); if (this.isPlaying) this.osmd.cursor.show(); } }
     }
-class ComposeAudioEngine {
-  constructor() {
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    this.oscillators = [];
-    this.gainNodes = [];
-    this.playing = false;
-  }
-  stop() {
-    this.playing = false;
-    this.oscillators.forEach(o => { try { o.stop(); } catch(e) {} });
-    this.oscillators = [];
-    this.gainNodes = [];
-  }
-  play(audioJson) {
-    this.stop();
-    this.playing = true;
-    const now = this.ctx.currentTime;
-    const notes = audioJson.notes || [];
-    const bg = audioJson.background || {};
-    const kokila = audioJson.kokila || {};
 
-    // Himalaya drone background
-    if (bg.type === 'himalaya-drone') {
-      bg.harmonics.forEach((h, i) => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = bg.baseFreq * h;
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(bg.volume * (1 - i * 0.15), now + 2);
-        osc.connect(gain).connect(this.ctx.destination);
-        osc.start(now);
-        this.oscillators.push(osc);
-        this.gainNodes.push(gain);
-      });
-    }
-
-    // Main melody notes
-    notes.forEach((n, i) => {
-      if (!n.freq || n.freq <= 0) return;
-      const t = now + n.time + 0.5;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      // Instrument timbre
-      if (n.instrument === 'Flute') osc.type = 'triangle';
-      else if (n.instrument === 'Veena') osc.type = 'sawtooth';
-      else osc.type = 'sine';
-      osc.frequency.setValueAtTime(n.freq, t);
-      // Gamaka (pitch bend)
-      if (n.gamaka === 'shake') {
-        osc.frequency.linearRampToValueAtTime(n.freq * 1.03, t + 0.1);
-        osc.frequency.linearRampToValueAtTime(n.freq, t + 0.2);
-      } else if (n.gamaka === 'slide') {
-        osc.frequency.linearRampToValueAtTime(n.freq * 1.05, t + n.duration);
+    class ComposeAudioEngine {
+      constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.oscillators = [];
+        this.gainNodes = [];
+        this.playing = false;
       }
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.25, t + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + n.duration);
-      osc.connect(gain).connect(this.ctx.destination);
-      osc.start(t);
-      osc.stop(t + n.duration + 0.1);
-      this.oscillators.push(osc);
-
-      // Kokila (nightingale) ornament every N beats
-      if (kokila.enabled && i % (kokila.interval || 4) === 0) {
-        const kOsc = this.ctx.createOscillator();
-        const kGain = this.ctx.createGain();
-        kOsc.type = 'sine';
-        kOsc.frequency.setValueAtTime(kokila.frequency || 2000, t);
-        kOsc.frequency.exponentialRampToValueAtTime((kokila.frequency || 2000) * 1.5, t + 0.08);
-        kGain.gain.setValueAtTime(0, t);
-        kGain.gain.linearRampToValueAtTime(kokila.volume || 0.08, t + 0.01);
-        kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-        kOsc.connect(kGain).connect(this.ctx.destination);
-        kOsc.start(t); kOsc.stop(t + 0.2);
+      stop() {
+        this.playing = false;
+        this.oscillators.forEach(o => { try { o.stop(); } catch(e) {} });
+        this.oscillators = [];
+        this.gainNodes = [];
       }
-    });
+      play(audioJson) {
+        this.stop();
+        this.playing = true;
+        const now = this.ctx.currentTime;
+        const notes = audioJson.notes || [];
+        const bg = audioJson.background || {};
+        const kokila = audioJson.kokila || {};
 
-    // Auto-stop
-    const lastNote = notes[notes.length - 1];
-    if (lastNote) {
-      setTimeout(() => this.stop(), (lastNote.time + lastNote.duration + 1) * 1000);
+        if (bg.type === 'himalaya-drone') {
+          bg.harmonics.forEach((h, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = bg.baseFreq * h;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(bg.volume * (1 - i * 0.15), now + 2);
+            osc.connect(gain).connect(this.ctx.destination);
+            osc.start(now);
+            this.oscillators.push(osc);
+            this.gainNodes.push(gain);
+          });
+        }
+
+        notes.forEach((n, i) => {
+          if (!n.freq || n.freq <= 0) return;
+          const t = now + n.time + 0.5;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          if (n.instrument === 'Flute') osc.type = 'triangle';
+          else if (n.instrument === 'Veena') osc.type = 'sawtooth';
+          else osc.type = 'sine';
+          osc.frequency.setValueAtTime(n.freq, t);
+          if (n.gamaka === 'shake') {
+            osc.frequency.linearRampToValueAtTime(n.freq * 1.03, t + 0.1);
+            osc.frequency.linearRampToValueAtTime(n.freq, t + 0.2);
+          } else if (n.gamaka === 'slide') {
+            osc.frequency.linearRampToValueAtTime(n.freq * 1.05, t + n.duration);
+          }
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.25, t + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + n.duration);
+          osc.connect(gain).connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + n.duration + 0.1);
+          this.oscillators.push(osc);
+
+          if (kokila.enabled && i % (kokila.interval || 4) === 0) {
+            const kOsc = this.ctx.createOscillator();
+            const kGain = this.ctx.createGain();
+            kOsc.type = 'sine';
+            kOsc.frequency.setValueAtTime(kokila.frequency || 2000, t);
+            kOsc.frequency.exponentialRampToValueAtTime((kokila.frequency || 2000) * 1.5, t + 0.08);
+            kGain.gain.setValueAtTime(0, t);
+            kGain.gain.linearRampToValueAtTime(kokila.volume || 0.08, t + 0.01);
+            kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+            kOsc.connect(kGain).connect(this.ctx.destination);
+            kOsc.start(t); kOsc.stop(t + 0.2);
+          }
+        });
+
+        const lastNote = notes[notes.length - 1];
+        if (lastNote) {
+          setTimeout(() => this.stop(), (lastNote.time + lastNote.duration + 1) * 1000);
+        }
+      }
     }
-  }
-}
     const app = new App();
   </script>
 </body>
