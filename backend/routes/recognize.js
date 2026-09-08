@@ -18,6 +18,7 @@ const { transliterateToTelugu } = require('../../core/ai/carnaticSegmenter');
 const { generateSegmentSwaras } = require('../swaragen');
 const { addToIndex } = require('../../core/vector/annIndex');
 const { downloadFromUrl } = require('../utils/download');
+const { analyzeLyrics } = require('../../core/ai/lyricsNLP');
 const sqliteModule = require('../../core/db/sqlite');
 const db = typeof sqliteModule === 'function' ? sqliteModule() : sqliteModule;
 
@@ -28,7 +29,6 @@ try {
   if (ffmpegStatic) ffmpeg.setFfmpegPath(ffmpegStatic);
 } catch (e) { console.warn('[recognize] fluent-ffmpeg not installed.'); }
 
-// ── Load Composition DB ───────────────────────────────────────────────
 let COMPOSITION_DB = [];
 try {
   COMPOSITION_DB = JSON.parse(fs.readFileSync(path.join(__dirname, '../../models/composition_db.json'), 'utf8'));
@@ -77,7 +77,24 @@ function findPython() {
 const PY = findPython();
 const TRANSCRIBE_SCRIPT = path.join(__dirname, '../../core/ai/transcribe.py');
 
-async function transcribeAudio(filePath, opts = {}) {
+function cleanupTranscription(text) {
+  if (!text) return '';
+  return text.replace(/\s+/g, ' ').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/\b(music|instrumental|applause|laughter|singing)\b/gi, '').trim();
+}
+
+function detectHallucination(text) {
+  if (!text || typeof text !== 'string') return true;
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  const patterns = [/^(na\s+){3,}$/i, /^(la\s+){3,}$/i, /^(da\s+){3,}$/i, /^(ta\s+){3,}$/i, /tadhari/gi, /gapadasa/gi, /garechani/gi, /dapadasa/gi, /darechani/gi];
+  for (const re of patterns) if (re.test(trimmed)) return true;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const unique = new Set(words.map(w => w.toLowerCase()));
+  if (words.length > 10 && unique.size / words.length < 0.15) return true;
+  return false;
+}
+
+async function _transcribeWithModel(filePath, opts) {
   return new Promise((resolve) => {
     const args = [TRANSCRIBE_SCRIPT, filePath];
     if (opts.model) args.push('--model', opts.model);
@@ -93,15 +110,31 @@ async function transcribeAudio(filePath, opts = {}) {
       if (code !== 0) {
         const errStr = Buffer.concat(err).toString('utf8').trim();
         console.error('[Transcribe] Python exited', code, errStr.slice(0, 400));
-        return resolve({ error: errStr || `Exit ${code}`, text: '', words: [] });
+        return resolve({ error: errStr || `Exit ${code}`, text: '', words: [], garbage: true });
       }
       try {
         const result = JSON.parse(outStr);
-        resolve({ text: result.text || '', words: result.words || [], language: result.language || 'auto' });
-      } catch (e) { resolve({ error: 'JSON parse error', text: '', words: [] }); }
+        const cleaned = cleanupTranscription(result.text || '');
+        const isGarbage = detectHallucination(cleaned);
+        resolve({ text: isGarbage ? '' : cleaned, words: result.words || [], language: result.language || 'auto', garbage: isGarbage, model: opts.model });
+      } catch (e) { resolve({ error: 'JSON parse error', text: '', words: [], garbage: true }); }
     });
-    proc.on('error', e => resolve({ error: e.message, text: '', words: [] }));
+    proc.on('error', e => resolve({ error: e.message, text: '', words: [], garbage: true }));
   });
+}
+
+async function transcribeAudio(filePath, opts = {}) {
+  const models = [opts.model || 'base', 'medium'];
+  for (const model of models) {
+    const result = await _transcribeWithModel(filePath, { ...opts, model });
+    if (!result.garbage && result.text) return result;
+    if (result.garbage && model !== 'medium') {
+      console.log(`[GoMaa] Hallucination detected with ${model}, retrying with medium...`);
+      continue;
+    }
+    return result;
+  }
+  return { error: 'Transcription failed after retry', text: '', words: [], garbage: true };
 }
 
 async function runUnifiedProcessor(audioPath) {
@@ -119,26 +152,6 @@ async function runUnifiedProcessor(audioPath) {
   });
 }
 
-function detectHallucination(text) {
-  if (!text || typeof text !== 'string') return true;
-  const trimmed = text.trim();
-  if (!trimmed) return true;
-  const patterns = [/^(na\s+){3,}$/i, /^(la\s+){3,}$/i, /^(da\s+){3,}$/i, /^(ta\s+){3,}$/i, /tadhari/gi, /gapadasa/gi, /garechani/gi, /dapadasa/gi, /darechani/gi];
-  for (const re of patterns) if (re.test(trimmed)) return true;
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  const unique = new Set(words.map(w => w.toLowerCase()));
-  if (words.length > 10 && unique.size / words.length < 0.15) return true;
-  return false;
-}
-
-function cleanupTranscription(text) {
-  if (!text) return '';
-  return text.replace(/\s+/g, ' ').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/\b(music|instrumental|applause|laughter|singing)\b/gi, '').trim();
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MAIN RECOGNIZE HANDLER — 10-Point Complete Analysis
-// ═══════════════════════════════════════════════════════════════
 router.post('/', async (req, res) => {
   let inputPath = null, normalizedPath = null, downloadedPath = null;
   try {
@@ -147,7 +160,6 @@ router.post('/', async (req, res) => {
     const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
     let filename = 'unknown', source = 'unknown';
 
-    // ── URL download ──
     if (url && !hasFile) {
       console.log('[GoMaa] URL provided:', url);
       const tempDir = path.join(__dirname, '..', '..', 'temp');
@@ -166,7 +178,6 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // ── File upload ──
     if (hasFile) {
       inputPath = uploadedFile.path;
       filename = uploadedFile.originalname || path.basename(uploadedFile.path) || 'upload';
@@ -175,15 +186,13 @@ router.post('/', async (req, res) => {
     }
 
     if (!inputPath) return res.status(400).json({ error: 'No file or valid URL provided.' });
-    console.log(`[GoMaa v4.0.4] Analysing: ${filename} (source: ${source})`);
+    console.log(`[GoMaa v6.1.2] Analysing: ${filename} (source: ${source})`);
 
-    // Try filename-based composition match (soft — only used as fallback)
     let compositionMatch = findCompositionByFilename(filename);
     if (compositionMatch) {
-      console.log(`[GoMaa] Composition matched by filename: ${compositionMatch.name} (used as fallback only)`);
+      console.log(`[GoMaa] Composition matched by filename: ${compositionMatch.name} (fallback only)`);
     }
 
-    // Normalize live recordings / WebM
     const lowerFn = filename.toLowerCase();
     if (ffmpeg && ffmpegStatic && (lowerFn.includes('live_recording') || lowerFn.endsWith('.webm'))) {
       normalizedPath = inputPath.replace(/\.[^.]+$/i, '_16k.wav');
@@ -191,11 +200,6 @@ router.post('/', async (req, res) => {
       catch (normErr) { console.warn('[GoMaa] Normalization failed:', normErr.message); normalizedPath = null; }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 10-POINT ANALYSIS PIPELINE
-    // ═══════════════════════════════════════════════════════
-
-    // 1. Audio metadata & decode
     let meta = { duration: 0, sampleRate: 44100, channels: 1 }, audioBuffer = null;
     try { meta = await getAudioMetadata(inputPath); audioBuffer = await decodeAudio(inputPath); console.log(`[GoMaa] Audio decoded: ${meta.duration.toFixed(1)}s @ ${meta.sampleRate}Hz`); }
     catch (e) { console.warn('[GoMaa] Audio decode failed:', e.message); }
@@ -203,19 +207,15 @@ router.post('/', async (req, res) => {
     const sampleRate = meta.sampleRate || 44100;
     const duration = meta.duration || 0;
 
-    // 2. Unified processor (optional)
     let unified = null;
     try { unified = await runUnifiedProcessor(inputPath); if (unified) console.log('[GoMaa] Unified processor succeeded'); } catch (e) {}
 
-    // 3. BEAT (Point 1)
     let beatResult = { bpm: 0, beats: [], confidence: 0, method: 'none' };
     try { if (audioBuffer) { beatResult = detectBeatCombFilter(audioBuffer, sampleRate); console.log(`[GoMaa] Beat: ${beatResult.bpm?.toFixed(1)} BPM`); } } catch (e) { console.warn('[GoMaa] Beat failed:', e.message); }
 
-    // 4. TAALAM (Point 2)
     let talaResult = { tala: 'Unknown', confidence: 0, tempo: 0, sections: [] };
     try { if (audioBuffer) { talaResult = detectTala(audioBuffer, sampleRate, { composition: null }); console.log(`[GoMaa] Tala: ${talaResult.tala}`); } } catch (e) { console.warn('[GoMaa] Tala failed:', e.message); }
 
-    // 5. PITCH (Point 3)
     let pitchResult = { shruti: 0, detectedSwaras: [], aroha: '', avarohana: '', pitches: [], noteTimeline: [], ascSemis: [], descSemis: [] };
     try {
       if (audioBuffer) {
@@ -224,7 +224,6 @@ router.post('/', async (req, res) => {
       }
     } catch (e) { console.warn('[GoMaa] Pitch failed:', e.message); }
 
-    // 6. RAGA / JANYA (Point 9) — USE pitchResult.pitches
     let ragaResult = { raga: 'Unknown', parentRaga: null, confidence: 0, ragaNumber: 0, janya: false };
     try {
       if (pitchResult.pitches && pitchResult.pitches.length > 0) {
@@ -233,16 +232,11 @@ router.post('/', async (req, res) => {
       }
     } catch (e) { console.warn('[GoMaa] Raga failed:', e.message); }
 
-    // If raga detected, try raga-based composition match as fallback (not override)
     if (!compositionMatch && ragaResult.raga && ragaResult.raga !== 'Unknown' && ragaResult.confidence > 0.5) {
       const ragaComp = findCompositionByRaga(ragaResult.raga);
-      if (ragaComp) {
-        compositionMatch = ragaComp;
-        console.log(`[GoMaa] Composition matched by raga (fallback): ${compositionMatch.name}`);
-      }
+      if (ragaComp) { compositionMatch = ragaComp; console.log(`[GoMaa] Composition matched by raga (fallback): ${compositionMatch.name}`); }
     }
 
-    // 7. SCALE (Point 4)
     let scaleResult = { chroma: [], detectedSemitones: [], noteNames: [], confidence: 0 };
     try {
       if (pitchResult.pitches && pitchResult.pitches.length > 0) {
@@ -251,57 +245,81 @@ router.post('/', async (req, res) => {
       }
     } catch (e) { console.warn('[GoMaa] Scale failed:', e.message); }
 
-    // 8. TRANSCRIPTION (Point 5) — WHISPER IS PRIMARY. Always run unless explicitly skipped.
-    let transcribeResult = { text: '', words: [], language: 'auto', garbage: false, skipped: false, source: 'whisper' };
+    // ═══════════════════════════════════════════════════════════════════════
+    // 8. TRANSCRIPTION (Point 5) — WHISPER IS PRIMARY with medium retry
+    // ═══════════════════════════════════════════════════════════════════════
+    let transcribeResult = { text: '', words: [], language: 'auto', garbage: false, skipped: false, source: 'whisper', confidence: 0 };
     const skipTranscribe = req.body?.skipTranscribe === '1' || req.body?.skipTranscribe === true;
+    const userSahityam = req.body?.sahityam || req.body?.lyrics || '';
 
     if (!skipTranscribe) {
       try {
-        console.log(`[GoMaa] Starting transcription with Whisper (model=base, ~${Math.ceil(duration/60)}min audio)...`);
+        console.log(`[GoMaa] Starting transcription with Whisper (~${Math.ceil(duration/60)}min audio)...`);
         transcribeResult = await transcribeAudio(inputPath, { model: 'base', language: '', wordTimestamps: true });
-        const cleaned = cleanupTranscription(transcribeResult.text);
-        if (detectHallucination(cleaned)) {
-          console.log('[GoMaa] Transcription hallucinated');
-          transcribeResult.text = ''; transcribeResult.words = []; transcribeResult.garbage = true;
-        } else {
-          transcribeResult.text = cleaned; transcribeResult.garbage = false;
-        }
-        console.log(`[GoMaa] Transcription: ${transcribeResult.text?.substring(0, 80)}...`);
+        transcribeResult.confidence = transcribeResult.garbage ? 0 : Math.min((transcribeResult.words?.length || 0) / 10, 0.95);
+        console.log(`[GoMaa] Transcription: ${transcribeResult.text?.substring(0, 80)}... (conf: ${(transcribeResult.confidence*100).toFixed(0)}%)`);
       } catch (e) { console.warn('[GoMaa] Transcription failed:', e.message); transcribeResult.error = e.message; }
     } else {
-      console.log('[GoMaa] Transcription skipped per request');
       transcribeResult.skipped = true; transcribeResult.source = 'user_skip';
     }
 
-    // FALLBACK: If Whisper failed/hallucinated and composition DB has sahityam, use it
-    if ((!transcribeResult.text || transcribeResult.garbage) && compositionMatch && compositionMatch.sahityam) {
+    // ── LYRICS NLP AUGMENTATION (v6.1.2) ──
+    let lyricsNlpResult = null;
+    if (userSahityam) {
+      console.log('[GoMaa] User-provided sahityam detected — using as ground truth');
+      lyricsNlpResult = analyzeLyrics(userSahityam);
+      console.log(`[GoMaa] Lyrics NLP: raga=${lyricsNlpResult.raga}, tala=${lyricsNlpResult.tala}, conf=${(lyricsNlpResult.overallConfidence*100).toFixed(0)}%`);
+    }
+
+    // ── FUSION LOGIC: Transcription primitive + Lyrics override ──
+    let finalText = transcribeResult.text || '';
+    let finalSource = transcribeResult.source || 'whisper';
+
+    if (userSahityam) {
+      finalText = userSahityam;
+      finalSource = 'user_ground_truth';
+    }
+
+    // If audio confidence < 40% AND lyrics NLP available, augment
+    if (transcribeResult.confidence < 0.40 && lyricsNlpResult && lyricsNlpResult.augmentationReady) {
+      console.log('[GoMaa] Audio confidence < 40% — falling back to lyrics NLP augmentation');
+      if (!finalText) finalText = userSahityam || '';
+      finalSource = 'lyrics_nlp_fallback';
+      if (lyricsNlpResult.ragaConfidence > 0.6 && (!ragaResult.raga || ragaResult.raga === 'Unknown')) {
+        ragaResult = {
+          raga: lyricsNlpResult.raga,
+          parentRaga: lyricsNlpResult.ragaDetails.parent,
+          confidence: lyricsNlpResult.ragaConfidence,
+          method: 'lyrics_nlp_override',
+          ragaNumber: lyricsNlpResult.ragaDetails.melakarta,
+          melakartaNum: lyricsNlpResult.ragaDetails.melakarta,
+          janya: !!lyricsNlpResult.ragaDetails.parent
+        };
+      }
+      if (lyricsNlpResult.talaConfidence > 0.5 && (!talaResult.tala || talaResult.tala === 'Unknown')) {
+        talaResult = { ...talaResult, tala: lyricsNlpResult.tala, confidence: lyricsNlpResult.talaConfidence, method: 'lyrics_nlp_override' };
+      }
+    }
+
+    // Composition DB fallback (only if no user sahityam and no valid transcription)
+    if ((!finalText || transcribeResult.garbage) && compositionMatch && compositionMatch.sahityam && !userSahityam) {
       console.log('[GoMaa] Using composition DB sahityam as fallback.');
-      transcribeResult = {
-        text: compositionMatch.sahityam?.pallavi || '',
-        words: [],
-        language: 'sa',
-        garbage: false,
-        skipped: false,
-        source: 'composition_db_fallback'
-      };
+      finalText = compositionMatch.sahityam?.pallavi || '';
+      finalSource = 'composition_db_fallback';
     }
 
-    // 9. TRANSLITERATION (Point 6) — only if we have real text
     let teluguText = '';
-    if (transcribeResult.text && !transcribeResult.garbage) {
-      try { teluguText = transliterateToTelugu(transcribeResult.text); } catch (e) { console.warn('[GoMaa] Transliteration failed:', e.message); }
+    if (finalText) {
+      try { teluguText = transliterateToTelugu(finalText); } catch (e) { console.warn('[GoMaa] Transliteration failed:', e.message); }
     }
 
-    // 10. SWARA GENERATION (Point 10)
     let swaraResult = { swaras: [], gamakas: [], pattern: '', language: 'te' };
     try { swaraResult = generateSwaraSequence(ragaResult.raga || 'Unknown', talaResult.tala || 'Adi', 'pallavi', 16, { includeGamaka: true, language: 'te' }); } catch (e) { console.warn('[GoMaa] Swara gen failed:', e.message); }
 
-    // 11. AAROHANA / AVAROHANA (Points 7 & 8)
     let arohaSemis = pitchResult.ascSemis || [];
     let avarohaSemis = pitchResult.descSemis || [];
 
-    // Override with composition DB only if we have a strong match AND no valid transcription
-    if (compositionMatch && compositionMatch.aroha && (!transcribeResult.text || transcribeResult.garbage)) {
+    if (compositionMatch && compositionMatch.aroha && (!finalText || transcribeResult.garbage)) {
       pitchResult.aroha = compositionMatch.aroha;
       pitchResult.avarohana = compositionMatch.avaroha;
       talaResult.tala = compositionMatch.tala || talaResult.tala;
@@ -312,11 +330,9 @@ router.post('/', async (req, res) => {
       ragaResult.method = 'composition_hint';
     }
 
-    // 12. SEGMENTS
     let segments = [];
     try { segments = generateSegmentSwaras(duration, compositionMatch, ragaResult.raga, pitchResult); } catch (e) { console.warn('[GoMaa] Segment swaras failed:', e.message); }
 
-    // 13. SHEET MUSIC
     let sheetMusicXml = '', scoreXml = '', midiB64 = '';
     try {
       const beatSwaras = (beatResult.beats || []).slice(0, 32).map((b, i) => ({
@@ -328,32 +344,23 @@ router.post('/', async (req, res) => {
       scoreXml = generateScoreXML(ragaResult.raga || 'Unknown', talaResult.tala || 'Adi', 'pallavi', swaraResult, { includeGamaka: true, includeLyrics: true });
     } catch (e) { console.warn('[GoMaa] Sheet music failed:', e.message); }
 
-    // Build sahityam
-    const sahityam = compositionMatch && compositionMatch.sahityam && (!transcribeResult.text || transcribeResult.garbage) ? {
-      pallavi: compositionMatch.sahityam.pallavi || transcribeResult.text || '',
-      anupallavi: compositionMatch.sahityam.anupallavi || '',
-      charanam1: compositionMatch.sahityam.charanam1 || '',
-      charanam2: compositionMatch.sahityam.charanam2 || '',
-      charanam3: compositionMatch.sahityam.charanam3 || '',
+    const sahityam = {
+      pallavi: finalText,
+      anupallavi: compositionMatch?.sahityam?.anupallavi || lyricsNlpResult?.ragaDetails?.mood || '',
+      charanam1: compositionMatch?.sahityam?.charanam1 || '',
+      charanam2: compositionMatch?.sahityam?.charanam2 || '',
+      charanam3: compositionMatch?.sahityam?.charanam3 || '',
       chittaswaram: '',
       manodharma: '',
-      telugu: teluguText
-    } : {
-      pallavi: transcribeResult.text || '',
-      anupallavi: '',
-      charanam1: '',
-      charanam2: '',
-      charanam3: '',
-      chittaswaram: '',
-      manodharma: '',
-      telugu: teluguText
+      telugu: teluguText,
+      source: finalSource,
+      lyricsNlp: lyricsNlpResult || undefined
     };
 
-    // ── Compose result ──
     const analysisResult = {
       success: true,
-      title: compositionMatch && (!transcribeResult.text || transcribeResult.garbage) ? compositionMatch.name : filename.replace(/\.[^.]+$/i, ''),
-      filename: filename, artist: 'Unknown', composer: compositionMatch && (!transcribeResult.text || transcribeResult.garbage) ? compositionMatch.composer : 'Unknown',
+      title: compositionMatch && (!finalText || transcribeResult.garbage) ? compositionMatch.name : filename.replace(/\.[^.]+$/i, ''),
+      filename: filename, artist: 'Unknown', composer: compositionMatch && (!finalText || transcribeResult.garbage) ? compositionMatch.composer : 'Unknown',
       raga: ragaResult.raga || 'Unknown', parentRaga: ragaResult.parentRaga || null,
       ragaNumber: ragaResult.ragaNumber || 0, janya: ragaResult.janya || false,
       tala: talaResult.tala || 'Unknown', tempo: talaResult.tempo || beatResult.bpm || 0,
@@ -368,7 +375,7 @@ router.post('/', async (req, res) => {
         arohaSemis: arohaSemis,
         avarohaSemis: avarohaSemis,
         ragaDetection: { raga: ragaResult.raga || 'Unknown', parentRaga: ragaResult.parentRaga || null, confidence: ragaResult.confidence || 0, method: ragaResult.method || 'multi-modal', janya: ragaResult.janya || false },
-        transcription: { text: transcribeResult.text || '', language: transcribeResult.language || 'auto', wordCount: (transcribeResult.words || []).length, garbage: transcribeResult.garbage || false, skipped: transcribeResult.skipped || false, source: transcribeResult.source || 'whisper' },
+        transcription: { text: finalText, language: transcribeResult.language || 'auto', wordCount: (transcribeResult.words || []).length, garbage: transcribeResult.garbage || false, skipped: transcribeResult.skipped || false, source: finalSource, confidence: transcribeResult.confidence || 0 },
         transliteration: { telugu: teluguText }, swaras: swaraResult, segments: segments || []
       },
       sahityam: sahityam,
@@ -378,7 +385,6 @@ router.post('/', async (req, res) => {
       musicXml: scoreXml || sheetMusicXml || '', midiData: midiB64, chroma: scaleResult.chroma || []
     };
 
-    // ── DB SAVE ──
     let savedId = null;
     try {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -396,11 +402,11 @@ router.post('/', async (req, res) => {
         JSON.stringify(scaleResult.chroma || []), JSON.stringify(segments || []),
         sheetMusicXml || '', midiB64 || '', transcribeResult.language || 'auto',
         JSON.stringify(analysisResult.analysis || {}), JSON.stringify(analysisResult.sahityam || {}),
-        JSON.stringify(transcribeResult || {}), transcribeResult.text || '',
+        JSON.stringify(transcribeResult || {}), finalText || '',
         Math.floor(Date.now() / 1000)
       );
       savedId = id;
-      console.log(`[GoMaa v4.0.4] Saved to DB: ${id}`);
+      console.log(`[GoMaa v6.1.2] Saved to DB: ${id}`);
       try { addToIndex(id, scaleResult.chroma || [], { title: analysisResult.title, raga: analysisResult.raga }); } catch (e) {}
     } catch (dbErr) { console.error('[GoMaa] DB save failed (non-fatal):', dbErr.message); }
 

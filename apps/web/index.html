@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GoMaa Raga Vidya v4.0.3</title>
+  <title>GoMaa Raga Vidya v6.1.2</title>
   <script src="https://unpkg.com/opensheetmusicdisplay@0.9.5/build/opensheetmusicdisplay.min.js"></script>
   <style>
     :root {
@@ -91,7 +91,6 @@
     .badge-janya { background: #fef3c7; color: #92400e; }
     .badge-melakarta { background: #d1fae5; color: #065f46; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    /* Melakarta Wheel Styles */
     .wheel-container { display: flex; justify-content: center; margin: 1.5rem 0; }
     .melakarta-wheel { width: 600px; height: 600px; position: relative; }
     .wheel-chakra { position: absolute; width: 100%; height: 100%; }
@@ -120,12 +119,11 @@
 </head>
 <body>
   <header>
-    <h1>🎵 GoMaa Raga Vidya</h1>
-    <p>Carnatic Music Analysis, Recognition & Composition</p>
+    <h1>GoMaa Raga Vidya</h1>
+    <p>Carnatic Music Analysis, Recognition & Composition — v6.1.2</p>
   </header>
 
   <div class="container">
-    <!-- Upload Section -->
     <div class="upload-section">
       <div class="upload-row">
         <div class="field-group">
@@ -136,59 +134,54 @@
           <label for="audio-url">Or Paste Audio / YouTube URL</label>
           <input type="url" id="audio-url" placeholder="https://... or https://youtube.com/watch?v=..." oninput="app.onUrlInput()">
         </div>
-        <button class="btn btn-primary" id="analyze-btn" onclick="app.analyze()">🔍 Analyze</button>
-        <button class="btn btn-secondary" id="record-btn" onclick="app.toggleRecord()">🎙 Record Live</button>
+        <button class="btn btn-primary" id="analyze-btn" onclick="app.analyze()">Analyze</button>
+        <button class="btn btn-secondary" id="record-btn" onclick="app.toggleRecord()">Record Live</button>
       </div>
       <div id="status"></div>
     </div>
 
-    <!-- Recording Panel -->
     <div id="record-panel" class="upload-section hidden">
       <div class="record-section">
-        <h2>🎙 Live Recording</h2>
+        <h2>Live Recording</h2>
         <div id="record-timer">00:00</div>
-        <button class="btn btn-danger" id="stop-record-btn" onclick="app.stopRecording()">⏹ Stop & Analyze</button>
+        <button class="btn btn-danger" id="stop-record-btn" onclick="app.stopRecording()">Stop & Analyze</button>
       </div>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs" id="tabs">
-      <button class="tab-btn active" data-tab="results" onclick="app.switchTab('results')">📊 Results</button>
-      <button class="tab-btn" data-tab="swaras" onclick="app.switchTab('swaras')">🎵 Swaras</button>
-      <button class="tab-btn" data-tab="lyrics" onclick="app.switchTab('lyrics')">📜 Lyrics</button>
-      <button class="tab-btn" data-tab="score" onclick="app.switchTab('score')">🎼 Score</button>
-      <button class="tab-btn" data-tab="compose" onclick="app.switchTab('compose')">✍️ Compose</button>
-      <button class="tab-btn" data-tab="saved" onclick="app.switchTab('saved')">💾 Saved</button>
-      <button class="tab-btn" data-tab="ragachart" onclick="app.switchTab('ragachart')">📋 Raga Chart</button>
+      <button class="tab-btn active" data-tab="results" onclick="app.switchTab('results')">Results</button>
+      <button class="tab-btn" data-tab="swaras" onclick="app.switchTab('swaras')">Swaras</button>
+      <button class="tab-btn" data-tab="lyrics" onclick="app.switchTab('lyrics')">Lyrics</button>
+      <button class="tab-btn" data-tab="score" onclick="app.switchTab('score')">Score</button>
+      <button class="tab-btn" data-tab="compose" onclick="app.switchTab('compose')">Compose</button>
+      <button class="tab-btn" data-tab="sahitya" onclick="app.switchTab('sahitya')">Sahitya</button>
+      <button class="tab-btn" data-tab="aivoice" onclick="app.switchTab('aivoice')">AI Voice</button>
+      <button class="tab-btn" data-tab="saved" onclick="app.switchTab('saved')">Saved</button>
+      <button class="tab-btn" data-tab="ragachart" onclick="app.switchTab('ragachart')">Raga Chart</button>
     </div>
 
-    <!-- RESULTS PANEL -->
     <div id="results-panel" class="tab-panel active">
       <p style="color: var(--text-muted);">Upload audio or enter a URL to see analysis results.</p>
     </div>
 
-    <!-- SWARAS PANEL -->
     <div id="swaras-panel" class="tab-panel">
       <p style="color: var(--text-muted);">Detected Carnatic swaras will appear here after analysis.</p>
     </div>
 
-    <!-- LYRICS PANEL -->
     <div id="lyrics-panel" class="tab-panel">
       <p style="color: var(--text-muted);">Sahityam (lyrics) will appear here after analysis.</p>
     </div>
 
-    <!-- SCORE PANEL -->
     <div id="score-panel" class="tab-panel">
       <div class="score-controls">
         <audio id="audio-player" controls></audio>
-        <button class="btn btn-primary" id="play-score-btn" onclick="app.playScore()">▶ Play Score</button>
+        <button class="btn btn-primary" id="play-score-btn" onclick="app.playScore()">Play Score</button>
       </div>
       <div id="score-container"></div>
     </div>
 
-    <!-- COMPOSE PANEL -->
     <div id="compose-panel" class="tab-panel">
-      <h2 style="margin-bottom: 1rem;">✍️ Compose & Generate Audio</h2>
+      <h2 style="margin-bottom: 1rem;">Compose & Generate Audio</h2>
       <div class="compose-form">
         <div class="two-col">
           <div class="field"><label>Title</label><input type="text" id="compose-title" placeholder="e.g., Mamava Sada Janani"></div>
@@ -208,11 +201,25 @@
             <select id="compose-tala"><option value="">Select Tala</option><option value="Adi">Adi</option><option value="Rupaka">Rupaka</option><option value="Misra Chapu">Misra Chapu</option><option value="Khanda Chapu">Khanda Chapu</option><option value="Dhruva">Dhruva</option><option value="Matya">Matya</option><option value="Jhampa">Jhampa</option><option value="Triputa">Triputa</option><option value="Ata">Ata</option><option value="Eka">Eka</option></select>
           </div>
           <div class="field">
+            <label>Voice Profile</label>
+            <select id="compose-voice">
+              <optgroup label="Divine"><option value="Divine Female" selected>Divine Female</option><option value="Divine Male">Divine Male</option><option value="Child Angel">Child Angel</option></optgroup>
+              <optgroup label="Human"><option value="Human Female">Human Female</option><option value="Human Male">Human Male</option></optgroup>
+              <optgroup label="Classical Instruments"><option value="Celestial Flute">Celestial Flute</option><option value="Veena Goddess">Veena Goddess</option></optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="field">
             <label>Instruments</label>
             <select id="compose-instrument" multiple size="3" style="height:auto;">
               <option value="Veena" selected>Veena</option><option value="Violin">Violin</option><option value="Flute" selected>Flute</option>
               <option value="Nadaswaram">Nadaswaram</option><option value="Mridangam">Mridangam</option><option value="Ghatam">Ghatam</option><option value="Voice">Voice</option>
             </select>
+          </div>
+          <div class="field">
+            <label>Brainwave Entrainment</label>
+            <select id="compose-brainwave"><option value="none">None</option><option value="meditation">Meditation</option><option value="focus">Focus</option><option value="creative">Creative</option><option value="sleep">Sleep</option><option value="learning">Learning</option></select>
           </div>
         </div>
         <div class="field"><label>Arohana <span class="hint">(auto-filled)</span></label><input type="text" id="compose-arohana" readonly></div>
@@ -221,93 +228,124 @@
         <div class="field"><label>Anupallavi Lyrics</label><textarea id="compose-anupallavi" placeholder="Enter anupallavi..."></textarea></div>
         <div class="field"><label>Charanam Lyrics</label><textarea id="compose-charanam" placeholder="Enter charanam..."></textarea></div>
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
-          <button class="btn btn-primary" onclick="app.analyzeCompose()">✨ Analyze & Compose</button>
-          <button class="btn btn-info" onclick="app.aiSuggest()">🎵 AI Suggest Swaras</button>
-          <button class="btn btn-purple" onclick="app.playComposeAudio()">▶ Play AI Audio</button>
-          <button class="btn btn-orange" onclick="app.downloadComposeSheets()">📥 Download Sheets</button>
+          <button class="btn btn-primary" onclick="app.analyzeCompose()">Analyze & Compose</button>
+          <button class="btn btn-info" onclick="app.aiSuggest()">AI Suggest Swaras</button>
+          <button class="btn btn-purple" onclick="app.playComposeAudio()">Play AI Audio</button>
+          <button class="btn btn-orange" onclick="app.downloadComposeSheets()">Download Sheets</button>
+          <button class="btn btn-secondary" onclick="app.downloadComposeMidi()">Download MIDI</button>
         </div>
         <div id="compose-status"></div>
         <div id="compose-result" style="display:none; margin-top:1rem;">
-          <div class="analysis-section"><h3>🎼 System Suggested Raga / Janya</h3>
+          <div class="analysis-section"><h3>System Suggested Raga / Janya</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Raga</h4><div class="value" id="comp-raga">—</div></div>
               <div class="point-card"><h4>Janya Of</h4><div class="value" id="comp-janya">—</div></div>
               <div class="point-card"><h4>Melakarta #</h4><div class="value" id="comp-melakarta">—</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>🎵 Generated Swaramu & Sahityamu</h3>
+          <div class="analysis-section"><h3>Generated Swaramu & Sahityamu</h3>
             <div class="transcription-box"><h4>Swaras</h4><p id="comp-swaras">—</p></div>
             <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Sahityam</h4><p id="comp-sahityam">—</p></div>
           </div>
           <div class="compose-audio-player">
-            <h4>🐦 Kokila Synthesis + 🏔️ Himalaya Ambience</h4>
-            <p style="font-size:0.85rem; color:var(--text-muted);">Web Audio synthesizer playing your composition with pleasant veena/flute tones, nightingale ornaments, and mountain drone.</p>
+            <h4>AI Synthesis + Ambience</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted);">Web Audio synthesizer playing your composition with selected voice profile, instruments, and brainwave entrainment.</p>
             <div id="compose-audio-controls" style="margin-top:0.5rem;"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SAVED PANEL -->
+    <div id="sahitya-panel" class="tab-panel">
+      <h2 style="margin-bottom: 1rem;">Add Sahitya / Lyrics (Ground Truth)</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">Paste sahityam here to override auto-transcription. When audio confidence is low, the system uses this as ground truth for 100% accuracy.</p>
+      <div class="compose-form">
+        <div class="field"><label>Pallavi</label><textarea id="sahitya-pallavi" placeholder="Enter pallavi sahityam..."></textarea></div>
+        <div class="field"><label>Anupallavi</label><textarea id="sahitya-anupallavi" placeholder="Enter anupallavi..."></textarea></div>
+        <div class="field"><label>Charanam</label><textarea id="sahitya-charanam" placeholder="Enter charanam..."></textarea></div>
+        <button class="btn btn-primary" onclick="app.saveSahitya()">Set as Ground Truth</button>
+        <div id="sahitya-status" style="margin-top:0.5rem;"></div>
+      </div>
+    </div>
+
+    <div id="aivoice-panel" class="tab-panel">
+      <h2 style="margin-bottom: 1rem;">AI Voice Synthesis</h2>
+      <div class="compose-form">
+        <div class="two-col">
+          <div class="field"><label>Raga</label><input type="text" id="aivoice-raga" placeholder="e.g., Mohanam"></div>
+          <div class="field"><label>Tala</label>
+            <select id="aivoice-tala"><option value="Adi">Adi</option><option value="Rupaka">Rupaka</option><option value="Misra Chapu">Misra Chapu</option><option value="Khanda Chapu">Khanda Chapu</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Voice Profile</label>
+          <select id="aivoice-voice">
+            <optgroup label="Divine"><option value="Divine Female">Divine Female</option><option value="Divine Male">Divine Male</option><option value="Child Angel">Child Angel</option></optgroup>
+            <optgroup label="Human"><option value="Human Female">Human Female</option><option value="Human Male">Human Male</option></optgroup>
+            <optgroup label="Classical Instruments"><option value="Celestial Flute">Celestial Flute</option><option value="Veena Goddess">Veena Goddess</option></optgroup>
+          </select>
+        </div>
+        <div class="field"><label>Brainwave Entrainment</label>
+          <select id="aivoice-brainwave"><option value="none">None</option><option value="meditation">Meditation (Alpha-Delta)</option><option value="focus">Focus (Beta)</option><option value="creative">Creative (Alpha-Gamma)</option><option value="sleep">Sleep (Delta)</option><option value="learning">Learning (Beta-Alpha)</option></select>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="app.generateAIVoice()">Generate</button>
+          <button class="btn btn-purple" onclick="app.playAIVoice()">Play</button>
+          <button class="btn btn-orange" onclick="app.downloadAIVoiceMidi()">Download MIDI</button>
+        </div>
+        <div id="aivoice-status"></div>
+        <div id="aivoice-result" style="display:none; margin-top:1rem;">
+          <div class="compose-audio-player"><h4>Generated Composition</h4><div id="aivoice-controls"></div></div>
+        </div>
+      </div>
+    </div>
+
     <div id="saved-panel" class="tab-panel">
-      <h2 style="margin-bottom: 1rem;">💾 Saved Analyses & Compositions</h2>
+      <h2 style="margin-bottom: 1rem;">Saved Analyses & Compositions</h2>
       <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-        <button class="btn btn-secondary" onclick="app.loadSavedList()">🔄 All</button>
-        <button class="btn btn-purple" onclick="app.loadApprovedList()">✅ Approved Only</button>
+        <button class="btn btn-secondary" onclick="app.loadSavedList()">All</button>
+        <button class="btn btn-purple" onclick="app.loadApprovedList()">Approved Only</button>
       </div>
       <div class="search-bar">
         <input type="search" id="saved-search" placeholder="Search title, raga, composer, sahityam..." oninput="app.onSavedSearch()">
         <input type="text" id="saved-raga-filter" placeholder="Raga" style="max-width:120px">
         <input type="text" id="saved-janya-filter" placeholder="Janya of" style="max-width:120px">
         <input type="text" id="saved-composer-filter" placeholder="Composer" style="max-width:120px">
-        <button class="btn btn-primary" onclick="app.searchSaved()">🔍 Search</button>
+        <button class="btn btn-primary" onclick="app.searchSaved()">Search</button>
       </div>
       <div id="saved-list-container"><p style="color: var(--text-muted);">Loading saved items...</p></div>
     </div>
 
-    <!-- RAGA CHART PANEL -->
     <div id="ragachart-panel" class="tab-panel">
-      <h2 style="margin-bottom: 1rem;">📋 Melakarta & Janya Reference</h2>
-
-      <!-- Melakarta Wheel -->
+      <h2 style="margin-bottom: 1rem;">Melakarta & Janya Reference</h2>
       <div class="analysis-section">
-        <h3>🌀 72 Melakarta Chakra Wheel</h3>
+        <h3>72 Melakarta Chakra Wheel</h3>
         <div class="wheel-container">
           <svg class="melakarta-wheel" viewBox="0 0 600 600" id="melakarta-wheel"></svg>
         </div>
         <div class="wheel-legend">
-          <span><span class="dot" style="background:#e74c3c"></span> Indu (1–6)</span>
-          <span><span class="dot" style="background:#e67e22"></span> Netra (7–12)</span>
-          <span><span class="dot" style="background:#f1c40f"></span> Agni (13–18)</span>
-          <span><span class="dot" style="background:#2ecc71"></span> Veda (19–24)</span>
-          <span><span class="dot" style="background:#1abc9c"></span> Bana (25–30)</span>
-          <span><span class="dot" style="background:#3498db"></span> Ruthu (31–36)</span>
-          <span><span class="dot" style="background:#9b59b6"></span> Rishi (37–42)</span>
-          <span><span class="dot" style="background:#e91e63"></span> Vasu (43–48)</span>
-          <span><span class="dot" style="background:#ff5722"></span> Brahma (49–54)</span>
-          <span><span class="dot" style="background:#795548"></span> Disi (55–60)</span>
-          <span><span class="dot" style="background:#607d8b"></span> Rudra (61–66)</span>
-          <span><span class="dot" style="background:#3f51b5"></span> Aditya (67–72)</span>
+          <span><span class="dot" style="background:#e74c3c"></span> Indu (1-6)</span>
+          <span><span class="dot" style="background:#e67e22"></span> Netra (7-12)</span>
+          <span><span class="dot" style="background:#f1c40f"></span> Agni (13-18)</span>
+          <span><span class="dot" style="background:#2ecc71"></span> Veda (19-24)</span>
+          <span><span class="dot" style="background:#1abc9c"></span> Bana (25-30)</span>
+          <span><span class="dot" style="background:#3498db"></span> Ruthu (31-36)</span>
+          <span><span class="dot" style="background:#9b59b6"></span> Rishi (37-42)</span>
+          <span><span class="dot" style="background:#e91e63"></span> Vasu (43-48)</span>
+          <span><span class="dot" style="background:#ff5722"></span> Brahma (49-54)</span>
+          <span><span class="dot" style="background:#795548"></span> Disi (55-60)</span>
+          <span><span class="dot" style="background:#607d8b"></span> Rudra (61-66)</span>
+          <span><span class="dot" style="background:#3f51b5"></span> Aditya (67-72)</span>
         </div>
       </div>
-
       <div class="field-group" style="max-width: 400px; margin-bottom: 1rem;">
         <label>Search Raga</label>
         <input type="text" id="raga-search" placeholder="Type raga name..." oninput="app.filterRagaChart()">
       </div>
       <div style="overflow-x: auto; max-height: 70vh;">
         <table class="raga-table" id="raga-chart-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Melakarta</th>
-              <th>Arohana</th>
-              <th>Avarohana</th>
-              <th>Common Janyas</th>
-            </tr>
-          </thead>
-          <tbody id="raga-chart-body">
-          </tbody>
+          <thead><tr><th>#</th><th>Melakarta</th><th>Arohana</th><th>Avarohana</th><th>Common Janyas</th></tr></thead>
+          <tbody id="raga-chart-body"></tbody>
         </table>
       </div>
     </div>
@@ -320,6 +358,9 @@
         this.scoreRenderer = null;
         this.recorder = new LiveRecorder();
         this.ragas = [];
+        this.groundTruthSahityam = null;
+        this.aiVoiceComposition = null;
+        this.currentComposition = null;
         this.init();
       }
       async init() {
@@ -355,6 +396,10 @@
         const hasFile = fileInput.files.length > 0;
         const hasUrl = urlInput.value.trim().length > 0;
         if (!hasFile && !hasUrl) { this.setStatus('Please upload a file OR enter a URL.', 'error'); return; }
+        if (this.groundTruthSahityam?.pallavi) {
+          formData.append('sahityam', this.groundTruthSahityam.pallavi);
+          if (this.groundTruthSahityam.anupallavi) formData.append('anupallavi', this.groundTruthSahityam.anupallavi);
+        }
         this.setStatus('Analyzing...', 'info');
         try {
           let response;
@@ -385,17 +430,8 @@
         const parent = data.parentRaga || data.janyaOf || '';
         const isJanya = data.janya || !!parent;
         const melakartaNum = data.ragaNumber || 0;
-
-        // Fix: format sections properly (objects with .label)
-        const sectionsStr = Array.isArray(tala.sections)
-          ? tala.sections.map(s => typeof s === 'object' ? s.label || s.type : s).join(' + ')
-          : '—';
-
-        // Fix: safe confidence formatting
-        const fmtConf = (v) => {
-          const n = parseFloat(v);
-          return isNaN(n) ? '—' : (n * 100).toFixed(0) + '%';
-        };
+        const sectionsStr = Array.isArray(tala.sections) ? tala.sections.map(s => typeof s === 'object' ? s.label || s.type : s).join(' + ') : '—';
+        const fmtConf = (v) => { const n = parseFloat(v); return isNaN(n) ? '—' : (n * 100).toFixed(0) + '%'; };
 
         panel.innerHTML = `
           <div class="result-grid">
@@ -406,48 +442,48 @@
             <div class="result-card"><h4>Duration</h4><p>${data.duration ? data.duration.toFixed(1) + 's' : '—'}</p></div>
             <div class="result-card"><h4>Tempo</h4><p>${data.tempo ? data.tempo.toFixed(0) + ' BPM' : '—'}</p></div>
           </div>
-          <div class="analysis-section"><h3>🥁 1. Beat Detection</h3>
+          <div class="analysis-section"><h3>1. Beat Detection</h3>
             <div class="point-grid">
               <div class="point-card"><h4>BPM</h4><div class="value">${beat.bpm?.toFixed(1) || '—'}</div><div class="meta">Confidence: ${fmtConf(beat.confidence)}</div></div>
               <div class="point-card"><h4>Beat Count</h4><div class="value">${beat.beatCount || '—'}</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>📿 2. Taalam Detection</h3>
+          <div class="analysis-section"><h3>2. Taalam Detection</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Tala</h4><div class="value">${tala.name || 'Unknown'}</div><div class="meta">Confidence: ${fmtConf(tala.confidence)}</div></div>
               <div class="point-card"><h4>Sections</h4><div class="value">${sectionsStr}</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>🎙 3. Pitch Detection (YIN)</h3>
+          <div class="analysis-section"><h3>3. Pitch Detection (YIN)</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Tonic / Shruti</h4><div class="value">${pitch.tonic?.toFixed(1) || '—'} Hz</div></div>
               <div class="point-card"><h4>Detected Swaras</h4><div class="value">${pitch.detectedSwaras?.join(' ') || '—'}</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>🎹 4. Scale Detection (Bayesian Chroma)</h3>
+          <div class="analysis-section"><h3>4. Scale Detection (Bayesian Chroma)</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Notes</h4><div class="value">${scale.noteNames?.join(' ') || '—'}</div><div class="meta">Confidence: ${fmtConf(scale.confidence)}</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>↗️ 7. Aarohana &nbsp; ↘️ 8. Avarohana</h3>
+          <div class="analysis-section"><h3>7. Aarohana &nbsp; 8. Avarohana</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Aarohana</h4><div class="value">${data.aroha || '—'}</div></div>
               <div class="point-card"><h4>Avarohana</h4><div class="value">${data.avaroha || '—'}</div></div>
             </div>
           </div>
-          <div class="analysis-section"><h3>🕉 9. Raga / Janya Detection</h3>
+          <div class="analysis-section"><h3>9. Raga / Janya Detection</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Detected Raga</h4><div class="value">${ragaDet.raga || 'Unknown'}</div><div class="meta">Confidence: ${fmtConf(ragaDet.confidence)}</div></div>
               <div class="point-card"><h4>Parent Melakarta</h4><div class="value">${ragaDet.parentRaga || '—'}</div>${ragaDet.janya ? '<div class="meta"><span class="badge badge-janya">Janya</span></div>' : '<div class="meta"><span class="badge badge-melakarta">Melakarta</span></div>'}</div>
             </div>
           </div>
-          <div class="analysis-section"><h3>📝 5. Transcription (Whisper)</h3>
-            <div class="transcription-box"><h4>${trans.language || 'Auto'} ${trans.garbage ? '<span style="color:var(--danger)">[Possible Hallucination]</span>' : ''} ${trans.skipped ? '<span style="color:var(--info)">[Skipped]</span>' : ''}</h4><p>${trans.text || 'No transcription available.'}</p></div>
+          <div class="analysis-section"><h3>5. Transcription (Whisper)</h3>
+            <div class="transcription-box"><h4>${trans.language || 'Auto'} ${trans.garbage ? '<span style="color:var(--danger)">[Possible Hallucination]</span>' : ''} ${trans.skipped ? '<span style="color:var(--info)">[Skipped]</span>' : ''} <span style="color:var(--text-muted);font-size:0.75rem;">[${trans.source || 'whisper'} | conf: ${fmtConf(trans.confidence)}]</span></h4><p>${trans.text || 'No transcription available.'}</p></div>
           </div>
-          <div class="analysis-section"><h3>🔤 6. Transliteration (Telugu)</h3>
+          <div class="analysis-section"><h3>6. Transliteration (Telugu)</h3>
             <div class="transcription-box" style="border-left-color:var(--purple)"><h4>Telugu Script</h4><p>${translit.telugu || '—'}</p></div>
           </div>
-          <div class="analysis-section"><h3>🎼 10. Swara / Sahityam / Sheet Music</h3>
+          <div class="analysis-section"><h3>10. Swara / Sahityam / Sheet Music</h3>
             <div class="point-grid">
               <div class="point-card"><h4>Generated Swaras</h4><div class="value">${a.swaras?.swaras?.join(' ') || '—'}</div></div>
               <div class="point-card"><h4>Pattern</h4><div class="value">${a.swaras?.pattern ? (a.swaras.pattern.length > 60 ? a.swaras.pattern.substring(0, 60) + '...' : a.swaras.pattern) : '—'}</div></div>
@@ -476,6 +512,7 @@
           <div class="swara-card" style="margin-bottom:1rem; background:#f0f9ff; border-color:#bae6fd;">
             <h3 style="color:#0369a1;">${name}</h3>
             <p style="font-size:1.05rem; line-height:1.8;">${text}</p>
+            ${name === 'Pallavi' && s.source ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Source: ${s.source}${s.lyricsNlp ? ' | NLP conf: ' + (s.lyricsNlp.overallConfidence * 100).toFixed(0) + '%' : ''}</div>` : ''}
           </div>`).join('');
       }
       async loadScore(xmlContent, audioUrl) {
@@ -498,7 +535,6 @@
         catch (e) { console.error('Failed to load raga chart', e); }
       }
 
-      // ── Melakarta Wheel Renderer ──
       renderMelakartaWheel(ragas) {
         const svg = document.getElementById('melakarta-wheel');
         if (!svg) return;
@@ -507,31 +543,19 @@
           svg.innerHTML = '<text x="300" y="300" text-anchor="middle" fill="#666" font-size="14">Loading melakarta data...</text>';
           return;
         }
-
         const cx = 300, cy = 300, maxR = 280;
-        const chakraColors = [
-          '#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db',
-          '#9b59b6','#e91e63','#ff5722','#795548','#607d8b','#3f51b5'
-        ];
-        const chakraNames = [
-          'Indu','Netra','Agni','Veda','Bana','Ruthu',
-          'Rishi','Vasu','Brahma','Disi','Rudra','Aditya'
-        ];
-
+        const chakraColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#ff5722','#795548','#607d8b','#3f51b5'];
+        const chakraNames = ['Indu','Netra','Agni','Veda','Bana','Ruthu','Rishi','Vasu','Brahma','Disi','Rudra','Aditya'];
         let html = '';
-        // Background circles for chakras
         for (let c = 0; c < 12; c++) {
-          const rInner = 30 + c * (maxR - 30) / 12;
           const rOuter = 30 + (c + 1) * (maxR - 30) / 12;
           html += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="${chakraColors[c]}" stroke-width="1.5" opacity="0.3"/>`;
         }
-
-        // Place each melakarta
         for (let i = 0; i < 72; i++) {
           const raga = melakartas[i];
           if (!raga) continue;
-          const chakra = Math.floor(i / 6); // 0–11
-          const posInChakra = i % 6; // 0–5
+          const chakra = Math.floor(i / 6);
+          const posInChakra = i % 6;
           const angle = (chakra * 30 + posInChakra * 5 - 90) * Math.PI / 180;
           const r = 30 + (chakra + 0.5) * (maxR - 30) / 12;
           const x = cx + r * Math.cos(angle);
@@ -539,21 +563,14 @@
           html += `<circle cx="${x}" cy="${y}" r="8" fill="${chakraColors[chakra]}" stroke="white" stroke-width="1"/>`;
           html += `<text x="${x}" y="${y + 3}" class="raga-name" data-raga="${raga.name}">${raga.melakarta}</text>`;
         }
-
-        // Chakra labels
         for (let c = 0; c < 12; c++) {
           const angle = (c * 30 + 15 - 90) * Math.PI / 180;
           const r = maxR + 15;
-          const x = cx + r * Math.cos(angle);
-          const y = cy + r * Math.sin(angle);
-          html += `<text x="${x}" y="${y}" class="chakra-label">${chakraNames[c]}</text>`;
+          html += `<text x="${cx + r * Math.cos(angle)}" y="${cy + r * Math.sin(angle)}" class="chakra-label">${chakraNames[c]}</text>`;
         }
-
-        // Center
         html += `<circle cx="${cx}" cy="${cy}" r="25" fill="var(--primary)"/>`;
         html += `<text x="${cx}" y="${cy + 4}" fill="white" font-size="12" font-weight="700" text-anchor="middle">72</text>`;
         html += `<text x="${cx}" y="${cy + 16}" fill="white" font-size="8" text-anchor="middle">Melakartas</text>`;
-
         svg.innerHTML = html;
       }
 
@@ -610,32 +627,32 @@
               ${item.janyaOf ? `<span class="badge badge-janya">J: ${item.janyaOf}</span>` : ''}
               <span class="badge badge-tala">${item.tala || '?'}</span>
               ${item.ragaNumber ? `<span class="badge badge-melakarta">M${item.ragaNumber}</span>` : ''}
-              ${item.approved ? '<span class="badge badge-approved">✓ Approved</span>' : '<span class="badge badge-pending">Pending</span>'}
+              ${item.approved ? '<span class="badge badge-approved">Approved</span>' : '<span class="badge badge-pending">Pending</span>'}
             </div>
             <small>${item.composer || item.artist || 'Unknown'} • ${item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}</small>
             ${item.audioUrl ? `<audio src="${item.audioUrl}" controls></audio>` : ''}
             <div style="margin-top:0.5rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
-              <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>📂 Load</button>
-              ${!item.approved ? `<button class="approve-btn btn-primary" style="background:var(--primary); color:white;" onclick="app.approveItem('${item.id}')">✓ Approve</button>` : ''}
+              <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick='app.loadSavedItem(${JSON.stringify(item).replace(/'/g, "&#39;")})'>Load</button>
+              ${!item.approved ? `<button class="approve-btn btn-primary" style="background:var(--primary); color:white;" onclick="app.approveItem('${item.id}')">Approve</button>` : ''}
             </div>
           </div>`).join('') + '</div>';
       }
       async saveComposition() {
         const payload = { id: `compose_${Date.now()}`, title: document.getElementById('compose-title').value, composer: document.getElementById('compose-composer').value, raga: document.getElementById('compose-raga').value, parent: document.getElementById('compose-parent').value, tala: document.getElementById('compose-tala').value, instrument: document.getElementById('compose-instrument').value, arohana: document.getElementById('compose-arohana').value, avarohana: document.getElementById('compose-avarohana').value, sahityam: { pallavi: document.getElementById('compose-pallavi').value, anupallavi: document.getElementById('compose-anupallavi').value, charanam1: document.getElementById('compose-charanam').value }, source: 'user_compose' };
-        try { const res = await fetch('/api/compositions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (res.ok) { document.getElementById('compose-status').textContent = '✅ Saved!'; await fetch('/api/compositions/reload', { method: 'POST' }); } else throw new Error('Save failed'); }
-        catch (e) { document.getElementById('compose-status').textContent = '❌ ' + e.message; }
+        try { const res = await fetch('/api/compositions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (res.ok) { document.getElementById('compose-status').textContent = 'Saved!'; await fetch('/api/compositions/reload', { method: 'POST' }); } else throw new Error('Save failed'); }
+        catch (e) { document.getElementById('compose-status').textContent = 'Error: ' + e.message; }
       }
       aiSuggest() {
         const raga = this.ragas.find(r => r.name.toLowerCase() === document.getElementById('compose-raga').value.toLowerCase());
         if (!raga) { alert('Select a raga first.'); return; }
         document.getElementById('compose-pallavi').value = `[Suggested Pallavi in ${raga.name}]\nArohana: ${raga.arohana?.join(' ') || ''}\nAvarohana: ${raga.avarohana?.join(' ') || ''}\n\nStart with: S , - S R2 G2 | M1 G2 R2 S | N2 , - D2 P | ...`;
-        document.getElementById('compose-status').textContent = '✨ Suggested swara skeleton pasted';
+        document.getElementById('compose-status').textContent = 'Suggested swara skeleton pasted';
       }
       async approveItem(id) {
         try {
           const res = await fetch(`/api/approve/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: 'user' }) });
           const data = await res.json();
-          if (data.success) { this.setStatus('✅ Approved and added to trained model', 'success'); this.loadSavedList(); }
+          if (data.success) { this.setStatus('Approved and added to trained model', 'success'); this.loadSavedList(); }
           else throw new Error(data.error);
         } catch (err) { this.setStatus('Approve failed: ' + err.message, 'error'); }
       }
@@ -658,7 +675,9 @@
           },
           preferredRaga: document.getElementById('compose-raga').value,
           preferredTala: document.getElementById('compose-tala').value,
-          instruments: Array.from(document.getElementById('compose-instrument').selectedOptions).map(o => o.value)
+          instruments: Array.from(document.getElementById('compose-instrument').selectedOptions).map(o => o.value),
+          voice: document.getElementById('compose-voice').value,
+          brainwavePreset: document.getElementById('compose-brainwave').value
         };
         document.getElementById('compose-status').textContent = 'Composing...';
         try {
@@ -672,12 +691,12 @@
           document.getElementById('comp-melakarta').textContent = data.melakartaNum || '—';
           document.getElementById('comp-swaras').textContent = (data.swaras?.swaras || []).join(' ');
           document.getElementById('comp-sahityam').textContent = data.sahityam?.telugu || data.sahityam?.pallavi || '—';
-          document.getElementById('compose-status').textContent = '✅ Composition generated!';
+          document.getElementById('compose-status').textContent = 'Composition generated!';
           document.getElementById('compose-raga').value = data.suggestedRaga;
           document.getElementById('compose-parent').value = data.suggestedJanyaOf || `Melakarta ${data.melakartaNum}`;
           document.getElementById('compose-arohana').value = data.aroha;
           document.getElementById('compose-avarohana').value = data.avaroha;
-        } catch (err) { document.getElementById('compose-status').textContent = '❌ ' + err.message; }
+        } catch (err) { document.getElementById('compose-status').textContent = 'Error: ' + err.message; }
       }
       playComposeAudio() {
         if (!this.currentComposition?.audioJson) { alert('Generate a composition first'); return; }
@@ -691,10 +710,11 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(carnaticBlob); a.download = `carnatic_${this.currentComposition.suggestedRaga}.xml`; a.click();
         const westernBlob = new Blob([this.currentComposition.westernSheet || ''], { type: 'application/xml' });
         const b = document.createElement('a'); b.href = URL.createObjectURL(westernBlob); b.download = `western_${this.currentComposition.suggestedRaga}.xml`; b.click();
-        if (this.currentComposition.midiData) {
-          const mBlob = new Blob([Buffer.from(this.currentComposition.midiData, 'base64')], { type: 'audio/midi' });
-          const c = document.createElement('a'); c.href = URL.createObjectURL(mBlob); c.download = `${this.currentComposition.suggestedRaga}.mid`; c.click();
-        }
+      }
+      downloadComposeMidi() {
+        if (!this.currentComposition?.midiData) { alert('No MIDI data available'); return; }
+        const mBlob = new Blob([Buffer.from(this.currentComposition.midiData, 'base64')], { type: 'audio/midi' });
+        const c = document.createElement('a'); c.href = URL.createObjectURL(mBlob); c.download = `${this.currentComposition.suggestedRaga || 'composition'}.mid`; c.click();
       }
       async loadSavedList() {
         const container = document.getElementById('saved-list-container');
@@ -706,6 +726,48 @@
         } catch (e) { container.innerHTML = '<p style="color: var(--text-muted);">Could not load saved items.</p>'; }
       }
       loadSavedItem(item) { window.dispatchEvent(new CustomEvent('analysisComplete', { detail: item })); this.switchTab('results'); }
+
+      // v6.1.2 — Sahitya ground truth
+      saveSahitya() {
+        const pallavi = document.getElementById('sahitya-pallavi').value;
+        const anupallavi = document.getElementById('sahitya-anupallavi').value;
+        const charanam = document.getElementById('sahitya-charanam').value;
+        this.groundTruthSahityam = { pallavi, anupallavi, charanam1: charanam };
+        document.getElementById('sahitya-status').textContent = 'Sahitya set as ground truth for next analysis';
+      }
+
+      // v6.1.2 — AI Voice synthesis
+      async generateAIVoice() {
+        const payload = {
+          raga: document.getElementById('aivoice-raga').value,
+          tala: document.getElementById('aivoice-tala').value,
+          voice: document.getElementById('aivoice-voice').value,
+          brainwavePreset: document.getElementById('aivoice-brainwave').value,
+          lyrics: ''
+        };
+        document.getElementById('aivoice-status').textContent = 'Generating...';
+        try {
+          const res = await fetch('/api/aivoice/compose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          this.aiVoiceComposition = data;
+          document.getElementById('aivoice-result').style.display = 'block';
+          document.getElementById('aivoice-status').textContent = 'Generated!';
+        } catch (err) { document.getElementById('aivoice-status').textContent = 'Error: ' + err.message; }
+      }
+      playAIVoice() {
+        if (!this.aiVoiceComposition?.audioJson) { alert('Generate first'); return; }
+        if (this.composeSynth) this.composeSynth.stop();
+        this.composeSynth = new ComposeAudioEngine();
+        this.composeSynth.play(this.aiVoiceComposition.audioJson);
+      }
+      downloadAIVoiceMidi() {
+        if (!this.aiVoiceComposition?.compositionId) { alert('Generate first'); return; }
+        const a = document.createElement('a');
+        a.href = `/api/aivoice/midi/${this.aiVoiceComposition.compositionId}`;
+        a.download = `gomaa_${this.aiVoiceComposition.audioJson?.raga || 'composition'}.mid`;
+        a.click();
+      }
     }
 
     class LiveRecorder {
@@ -757,7 +819,7 @@
         const bg = audioJson.background || {};
         const kokila = audioJson.kokila || {};
 
-        if (bg.type === 'himalaya-drone') {
+        if (bg.type === 'himalaya-drone' || bg.type === 'tanpura-drone') {
           bg.harmonics.forEach((h, i) => {
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
@@ -777,8 +839,8 @@
           const t = now + n.time + 0.5;
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
-          if (n.instrument === 'Flute') osc.type = 'triangle';
-          else if (n.instrument === 'Veena') osc.type = 'sawtooth';
+          if (n.instrument === 'Flute' || n.instrument === 'Celestial Flute') osc.type = 'triangle';
+          else if (n.instrument === 'Veena' || n.instrument === 'Veena Goddess') osc.type = 'sawtooth';
           else osc.type = 'sine';
           osc.frequency.setValueAtTime(n.freq, t);
           if (n.gamaka === 'shake') {

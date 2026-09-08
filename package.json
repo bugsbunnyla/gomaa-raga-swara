@@ -1,7 +1,7 @@
 {
   "name": "gomaa-raga-vidya",
-  "version": "4.0.0",
-  "description": "Carnatic Music Analysis & Raga Recognition Engine",
+  "version": "6.1.2",
+  "description": "Carnatic Music Analysis & Raga Recognition Engine \u2014 v6.1.2 with Lyrics NLP, AI Voice, MIDI, Brainwave",
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",

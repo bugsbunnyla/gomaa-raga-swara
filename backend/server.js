@@ -18,6 +18,7 @@ const composeRouter = require('./routes/compose');
 const approveRouter = require('./routes/approve');
 const transcribeRouter = require('./routes/transcribe');
 const scaleRouter = require('./routes/scale');
+const aiaudioRouter = require('./routes/aiaudio');
 
 app.use('/api/recognize', upload.single('audio'), recognizeRouter);
 app.use('/api/search', searchRouter);
@@ -26,6 +27,7 @@ app.use('/api/compose', composeRouter);
 app.use('/api/approve', approveRouter);
 app.use('/api/transcribe', upload.single('audio'), transcribeRouter);
 app.use('/api/scale', scaleRouter);
+app.use('/api/aivoice', aiaudioRouter);
 
 app.get('/api/ragas-chart', async (req, res) => {
   try {
@@ -35,14 +37,18 @@ app.get('/api/ragas-chart', async (req, res) => {
     res.json(enriched);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 app.get('/api/audio/:id', async (req, res) => {
   try {
+    const sqliteModule = require('../core/db/sqlite');
+    const db = typeof sqliteModule === 'function' ? sqliteModule() : sqliteModule;
     const row = await db.prepare('SELECT filePath FROM music WHERE id = ?').get(req.params.id);
+    if (typeof db.close === 'function') db.close();
     if (!row || !row.filePath || !fs.existsSync(row.filePath)) return res.status(404).json({ error: 'Audio not found' });
     res.sendFile(path.resolve(row.filePath));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// ── Saved list (includes approval status) ──
+
 app.get('/api/saved', async (req, res) => {
   try {
     const sqliteModule = require('../core/db/sqlite');
@@ -60,7 +66,7 @@ app.get('/api/saved', async (req, res) => {
       tala: r.tala, tempo: r.tempo, duration: r.duration, approved: r.approved,
       approvedAt: r.approvedAt, approvedBy: r.approvedBy,
       created_at: r.createdAt ? new Date(r.createdAt * 1000).toISOString() : null,
-      audioUrl: r.filePath && !r.filePath.includes(':\\\\') ? `/api/audio/${r.id}` : undefined, sahityam: r.sahityam,
+      audioUrl: r.filePath && !r.filePath.includes(':\\') ? `/api/audio/${r.id}` : undefined, sahityam: r.sahityam,
       lyricsJson: r.lyricsJson ? JSON.parse(r.lyricsJson) : null,
       analysisJson: r.analysisJson ? JSON.parse(r.analysisJson) : null,
       transcriptionJson: r.transcriptionJson ? JSON.parse(r.transcriptionJson) : null,
@@ -69,7 +75,6 @@ app.get('/api/saved', async (req, res) => {
   } catch (err) { console.error('[api/saved]', err.message); res.json([]); }
 });
 
-// ── Approved list for model training ──
 app.get('/api/approved', async (req, res) => {
   try {
     const sqliteModule = require('../core/db/sqlite');
@@ -107,6 +112,19 @@ app.post('/api/compositions/reload', (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Ensure ai_compositions table exists
+(async () => {
+  try {
+    const sqliteModule = require('../core/db/sqlite');
+    const db = typeof sqliteModule === 'function' ? sqliteModule() : sqliteModule;
+    db.prepare(`CREATE TABLE IF NOT EXISTS ai_compositions (
+      id TEXT PRIMARY KEY, raga TEXT, tala TEXT, voice TEXT, tempo INTEGER,
+      audioJson TEXT, midiB64 TEXT, createdAt INTEGER
+    )`).run();
+    if (typeof db.close === 'function') db.close();
+  } catch (e) { console.warn('[GoMaa] ai_compositions table init skipped:', e.message); }
+})();
+
 // ANN index build
 (async () => {
   try {
@@ -120,4 +138,4 @@ app.post('/api/compositions/reload', (req, res) => {
 })();
 
 app.use((err, req, res, next) => { console.error('[server]', err); res.status(500).json({ error: 'Internal server error' }); });
-app.listen(PORT, () => console.log(`[GoMaa] Server on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`[GoMaa v6.1.2] Server on http://localhost:${PORT}`));
